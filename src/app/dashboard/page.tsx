@@ -2,6 +2,7 @@
 
 import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabaseClient';
 
 type Product = {
@@ -43,6 +44,11 @@ export default function DashboardPage() {
   const [pipelines, setPipelines] = useState<PipelineRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
+  // filter state
+  const [filterProductId, setFilterProductId] = useState<string>('all');
+  const [filterPlan, setFilterPlan] = useState<string>('all');
+  const [filterQuadrant, setFilterQuadrant] = useState<string>('all');
+
   // form state
   const [productId, setProductId] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -58,6 +64,7 @@ export default function DashboardPage() {
   const [pipelineDate, setPipelineDate] = useState<string>('');
 
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // 1) cek user login
@@ -214,14 +221,6 @@ export default function DashboardPage() {
     }
   };
 
-  if (loadingUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <p className="text-sm text-slate-600">Memuat dashboard…</p>
-      </div>
-    );
-  }
-
   const getProductName = (product_id: string) => {
     const p = products.find((prod) => prod.id === product_id);
     return p ? p.name : '-';
@@ -232,6 +231,82 @@ export default function DashboardPage() {
     const m = marketers.find((mk) => mk.id === marketer_id);
     return m ? m.name : '-';
   };
+
+  // FILTER: bentuk array yang sudah difilter
+  const filteredPipelines = pipelines.filter((p) => {
+    const matchProduct =
+      filterProductId === 'all' ? true : p.product_id === filterProductId;
+
+    const matchPlan =
+      filterPlan === 'all'
+        ? true
+        : (p.execution_plan ?? '').toLowerCase() === filterPlan.toLowerCase();
+
+    const matchQuadrant =
+      filterQuadrant === 'all'
+        ? true
+        : (p.quadrant ?? '').toLowerCase() === filterQuadrant.toLowerCase();
+
+    return matchProduct && matchPlan && matchQuadrant;
+  });
+
+  const totalApeIdr = filteredPipelines.reduce(
+    (acc, item) => acc + (item.ape_idr ?? 0),
+    0
+  );
+  const totalApeUsd = filteredPipelines.reduce(
+    (acc, item) => acc + (item.ape_usd ?? 0),
+    0
+  );
+
+  const handleExportExcel = () => {
+    if (filteredPipelines.length === 0) {
+      alert('Tidak ada data pipeline untuk diexport (periksa filter).');
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const rows = filteredPipelines.map((p, index) => ({
+        NO: index + 1,
+        PRODUK: getProductName(p.product_id),
+        BRANCH: p.branch ?? '',
+        CLASS: p.class ?? '',
+        NASABAH: p.customer_name,
+        LG: getMarketerName(p.marketer_id),
+        'APE IDR': p.ape_idr ?? 0,
+        'APE USD': p.ape_usd ?? 0,
+        'Eks. Plan': p.execution_plan ?? '',
+        Kuadran: p.quadrant ?? '',
+        REMARKS: p.remarks ?? '',
+        PRIORITAS: p.priority_flag ? 'YES' : '',
+        TANGGAL: p.pipeline_date ?? '',
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Pipeline');
+
+      const safeEmail =
+        (userEmail ?? 'user')
+          .split('@')[0]
+          .replace(/[^a-zA-Z0-9_-]/g, '') || 'user';
+      const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const filename = `pipeline-${safeEmail}-${dateStr}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (loadingUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <p className="text-sm text-slate-600">Memuat dashboard…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -275,41 +350,35 @@ export default function DashboardPage() {
         <section className="grid gap-4 md:grid-cols-3">
           <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
             <p className="text-xs font-medium text-slate-500 mb-1">
-              Total pipeline
+              Total pipeline (terfilter)
             </p>
             <h2 className="text-2xl font-semibold text-slate-900">
-              {pipelines.length}
+              {filteredPipelines.length}
             </h2>
             <p className="text-xs text-slate-500">
-              Jumlah nasabah dalam pipeline Anda.
+              Jumlah nasabah dalam pipeline sesuai filter aktif.
             </p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
             <p className="text-xs font-medium text-slate-500 mb-1">
-              APE IDR (sum)
+              APE IDR (sum, terfilter)
             </p>
             <h2 className="text-2xl font-semibold text-slate-900">
-              Rp{' '}
-              {pipelines
-                .reduce((acc, item) => acc + (item.ape_idr ?? 0), 0)
-                .toLocaleString('id-ID')}
+              Rp {totalApeIdr.toLocaleString('id-ID')}
             </h2>
             <p className="text-xs text-slate-500">
-              Perkiraan total dari seluruh pipeline (IDR).
+              Total APE IDR dari data yang sedang ditampilkan.
             </p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
             <p className="text-xs font-medium text-slate-500 mb-1">
-              APE USD (sum)
+              APE USD (sum, terfilter)
             </p>
             <h2 className="text-2xl font-semibold text-slate-900">
-              $
-              {pipelines
-                .reduce((acc, item) => acc + (item.ape_usd ?? 0), 0)
-                .toLocaleString('en-US')}
+              ${totalApeUsd.toLocaleString('en-US')}
             </h2>
             <p className="text-xs text-slate-500">
-              Perkiraan total dari seluruh pipeline (USD).
+              Total APE USD dari data yang sedang ditampilkan.
             </p>
           </div>
         </section>
@@ -522,27 +591,75 @@ export default function DashboardPage() {
             </form>
           </div>
 
-          {/* LIST PIPELINE */}
+          {/* LIST PIPELINE + FILTER + EXPORT */}
           <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col gap-2 mb-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-slate-900">
                   Pipeline Anda
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Daftar pipeline terbaru (hanya milik akun ini).
+                  Daftar pipeline terbaru (hanya milik akun ini). Filter akan mempengaruhi export Excel.
                 </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 items-center">
+                <select
+                  className="border border-slate-200 rounded-lg px-2 py-1 text-[11px] bg-slate-50/60"
+                  value={filterProductId}
+                  onChange={(e) => setFilterProductId(e.target.value)}
+                >
+                  <option value="all">Semua produk</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="border border-slate-200 rounded-lg px-2 py-1 text-[11px] bg-slate-50/60"
+                  value={filterPlan}
+                  onChange={(e) => setFilterPlan(e.target.value)}
+                >
+                  <option value="all">Semua plan</option>
+                  <option value="week 1">week 1</option>
+                  <option value="week 2">week 2</option>
+                  <option value="week 3">week 3</option>
+                  <option value="week 4">week 4</option>
+                </select>
+
+                <select
+                  className="border border-slate-200 rounded-lg px-2 py-1 text-[11px] bg-slate-50/60"
+                  value={filterQuadrant}
+                  onChange={(e) => setFilterQuadrant(e.target.value)}
+                >
+                  <option value="all">Semua kuadran</option>
+                  <option value="k1">k1</option>
+                  <option value="k2">k2</option>
+                  <option value="k3">k3</option>
+                  <option value="k4">k4</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={handleExportExcel}
+                  disabled={exporting || filteredPipelines.length === 0}
+                  className="text-[11px] px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                >
+                  {exporting ? 'Mengekspor…' : 'Export Excel'}
+                </button>
               </div>
             </div>
 
             {loadingData ? (
               <p className="text-xs text-slate-500 mt-2">Memuat data…</p>
-            ) : pipelines.length === 0 ? (
+            ) : filteredPipelines.length === 0 ? (
               <p className="text-xs text-slate-500 mt-2">
-                Belum ada data pipeline. Tambahkan dari formulir di sebelah kiri.
+                Tidak ada data untuk filter yang dipilih. Coba ubah filter atau tambahkan pipeline baru.
               </p>
             ) : (
-              <div className="mt-3 border border-slate-100 rounded-xl overflow-hidden">
+              <div className="mt-1 border border-slate-100 rounded-xl overflow-hidden">
                 <table className="w-full border-collapse text-[11px]">
                   <thead className="bg-slate-50">
                     <tr className="text-left text-slate-600">
@@ -555,7 +672,7 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pipelines.map((p) => (
+                    {filteredPipelines.map((p) => (
                       <tr
                         key={p.id}
                         className={`border-t border-slate-100 ${
