@@ -44,6 +44,11 @@ export default function DashboardPage() {
   const [pipelines, setPipelines] = useState<PipelineRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
+  // Modal detail state
+const [selectedPipeline, setSelectedPipeline] = useState<PipelineRow | null>(null);
+const [showDetailModal, setShowDetailModal] = useState(false);
+
+
   // filter state
   const [filterProductId, setFilterProductId] = useState<string>('all');
   const [filterPlan, setFilterPlan] = useState<string>('all');
@@ -222,40 +227,40 @@ export default function DashboardPage() {
   };
 
   const getProductName = (product_id: string) => {
-    const p = products.find((prod) => prod.id === product_id);
-    return p ? p.name : '-';
+    const product = products.find((prod) => prod.id === product_id);
+    return product ? product.name : '-';
   };
 
   const getMarketerName = (marketer_id: string | null) => {
     if (!marketer_id) return '-';
-    const m = marketers.find((mk) => mk.id === marketer_id);
-    return m ? m.name : '-';
+    const marketer = marketers.find((mk) => mk.id === marketer_id);
+    return marketer ? marketer.name : '-';
   };
 
   // FILTER: bentuk array yang sudah difilter
-  const filteredPipelines = pipelines.filter((p) => {
+  const filteredPipelines = pipelines.filter((row) => {
     const matchProduct =
-      filterProductId === 'all' ? true : p.product_id === filterProductId;
+      filterProductId === 'all' ? true : row.product_id === filterProductId;
 
     const matchPlan =
       filterPlan === 'all'
         ? true
-        : (p.execution_plan ?? '').toLowerCase() === filterPlan.toLowerCase();
+        : (row.execution_plan ?? '').toLowerCase() === filterPlan.toLowerCase();
 
     const matchQuadrant =
       filterQuadrant === 'all'
         ? true
-        : (p.quadrant ?? '').toLowerCase() === filterQuadrant.toLowerCase();
+        : (row.quadrant ?? '').toLowerCase() === filterQuadrant.toLowerCase();
 
     return matchProduct && matchPlan && matchQuadrant;
   });
 
   const totalApeIdr = filteredPipelines.reduce(
-    (acc, item) => acc + (item.ape_idr ?? 0),
+    (acc, row) => acc + (row.ape_idr ?? 0),
     0
   );
   const totalApeUsd = filteredPipelines.reduce(
-    (acc, item) => acc + (item.ape_usd ?? 0),
+    (acc, row) => acc + (row.ape_usd ?? 0),
     0
   );
 
@@ -267,20 +272,20 @@ export default function DashboardPage() {
 
     setExporting(true);
     try {
-      const rows = filteredPipelines.map((p, index) => ({
+      const rows = filteredPipelines.map((row, index) => ({
         NO: index + 1,
-        PRODUK: getProductName(p.product_id),
-        BRANCH: p.branch ?? '',
-        CLASS: p.class ?? '',
-        NASABAH: p.customer_name,
-        LG: getMarketerName(p.marketer_id),
-        'APE IDR': p.ape_idr ?? 0,
-        'APE USD': p.ape_usd ?? 0,
-        'Eks. Plan': p.execution_plan ?? '',
-        Kuadran: p.quadrant ?? '',
-        REMARKS: p.remarks ?? '',
-        PRIORITAS: p.priority_flag ? 'YES' : '',
-        TANGGAL: p.pipeline_date ?? '',
+        PRODUK: getProductName(row.product_id),
+        BRANCH: row.branch ?? '',
+        CLASS: row.class ?? '',
+        NASABAH: row.customer_name,
+        LG: getMarketerName(row.marketer_id),
+        'APE IDR': row.ape_idr ?? 0,
+        'APE USD': row.ape_usd ?? 0,
+        'Eks. Plan': row.execution_plan ?? '',
+        Kuadran: row.quadrant ?? '',
+        REMARKS: row.remarks ?? '',
+        PRIORITAS: row.priority_flag ? 'YES' : '',
+        TANGGAL: row.pipeline_date ?? '',
       }));
 
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -412,9 +417,9 @@ export default function DashboardPage() {
                     onChange={(e) => setProductId(e.target.value)}
                   >
                     <option value="">Pilih produk</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
+                    {products.map((prod) => (
+                      <option key={prod.id} value={prod.id}>
+                        {prod.name}
                       </option>
                     ))}
                   </select>
@@ -443,9 +448,9 @@ export default function DashboardPage() {
                     onChange={(e) => setMarketerId(e.target.value)}
                   >
                     <option value="">Pilih marketer</option>
-                    {marketers.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
+                    {marketers.map((mk) => (
+                      <option key={mk.id} value={mk.id}>
+                        {mk.name}
                       </option>
                     ))}
                   </select>
@@ -610,9 +615,9 @@ export default function DashboardPage() {
                   onChange={(e) => setFilterProductId(e.target.value)}
                 >
                   <option value="all">Semua produk</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
+                  {products.map((prod) => (
+                    <option key={prod.id} value={prod.id}>
+                      {prod.name}
                     </option>
                   ))}
                 </select>
@@ -669,47 +674,70 @@ export default function DashboardPage() {
                       <th className="px-3 py-2 text-right">APE IDR</th>
                       <th className="px-3 py-2">Plan</th>
                       <th className="px-3 py-2">Kdr</th>
+                      <th className="px-3 py-2 text-center">Aksi</th>
+                      {/* <td className="px-3 py-2 text-center">
+                      <button
+                        onClick={() => {
+                          setSelectedPipeline(p);
+                          setShowDetailModal(true);
+                        }}
+                        className="text-[10px] px-2 py-1 rounded bg-slate-900 text-white hover:bg-slate-800"
+                      >
+                        Detail
+                      </button>
+                    </td> */}
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPipelines.map((p) => (
+                    {filteredPipelines.map((row) => (
                       <tr
-                        key={p.id}
+                        key={row.id}
                         className={`border-t border-slate-100 ${
-                          p.priority_flag ? 'bg-yellow-50' : 'bg-white'
+                          row.priority_flag ? 'bg-yellow-50' : 'bg-white'
                         }`}
                       >
                         <td className="px-3 py-2">
-                          {getProductName(p.product_id)}
+                          {getProductName(row.product_id)}
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex flex-col">
                             <span className="font-medium text-slate-900">
-                              {p.customer_name}
+                              {row.customer_name}
                             </span>
-                            {p.remarks && (
+                            {row.remarks && (
                               <span className="text-[10px] text-slate-500 line-clamp-2">
-                                {p.remarks}
+                                {row.remarks}
                               </span>
                             )}
                           </div>
                         </td>
                         <td className="px-3 py-2">
-                          {getMarketerName(p.marketer_id)}
+                          {getMarketerName(row.marketer_id)}
                         </td>
                         <td className="px-3 py-2 text-right">
-                          {p.ape_idr
-                            ? p.ape_idr.toLocaleString('id-ID', {
+                          {row.ape_idr
+                            ? row.ape_idr.toLocaleString('id-ID', {
                                 maximumFractionDigits: 0,
                               })
                             : '-'}
                         </td>
                         <td className="px-3 py-2">
-                          {p.execution_plan ?? '-'}
+                          {row.execution_plan ?? '-'}
                         </td>
                         <td className="px-3 py-2 uppercase">
-                          {p.quadrant ?? '-'}
+                          {row.quadrant ?? '-'}
                         </td>
+                        <td className="px-3 py-2 text-center">
+                      <button
+                        onClick={() => {
+                          setSelectedPipeline(row);
+                          setShowDetailModal(true);
+                        }}
+                        className="text-[10px] px-2 py-1 rounded bg-slate-900 text-white hover:bg-slate-800"
+                      >
+                        Detail
+                      </button>
+                    </td>
                       </tr>
                     ))}
                   </tbody>
@@ -719,6 +747,95 @@ export default function DashboardPage() {
           </div>
         </section>
       </main>
+      {/* ===== MODAL DETAIL PIPELINE ===== */}
+      {showDetailModal && selectedPipeline && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl">
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">
+              Detail Pipeline
+            </h3>
+            <div className="space-y-2 text-xs text-slate-700 max-h-[60vh] overflow-y-auto pr-1">
+              <div>
+                <span className="font-medium">Produk:</span><br />
+                {getProductName(selectedPipeline.product_id)}
+              </div>
+              <div>
+                <span className="font-medium">Nasabah:</span><br />
+                {selectedPipeline.customer_name}
+              </div>
+              <div>
+                <span className="font-medium">Marketer:</span><br />
+                {getMarketerName(selectedPipeline.marketer_id)}
+              </div>
+              <div>
+                <span className="font-medium">Branch:</span><br />
+                {selectedPipeline.branch ?? '-'}
+              </div>
+              <div>
+                <span className="font-medium">Class:</span><br />
+                {selectedPipeline.class ?? '-'}
+              </div>
+              <div>
+                <span className="font-medium">APE IDR:</span><br />
+                {selectedPipeline.ape_idr?.toLocaleString('id-ID') ?? '-'}
+              </div>
+              <div>
+                <span className="font-medium">APE USD:</span><br />
+                {selectedPipeline.ape_usd?.toLocaleString('en-US') ?? '-'}
+              </div>
+              <div>
+                <span className="font-medium">Execution Plan:</span><br />
+                {selectedPipeline.execution_plan ?? '-'}
+              </div>
+              <div>
+                <span className="font-medium">Quadrant:</span><br />
+                {selectedPipeline.quadrant ?? '-'}
+              </div>
+              <div>
+                <span className="font-medium">Remarks:</span><br />
+                {selectedPipeline.remarks ?? '-'}
+              </div>
+              <div>
+                <span className="font-medium">Tanggal Pipeline:</span><br />
+                {selectedPipeline.pipeline_date ?? '-'}
+              </div>
+              <div>
+                <span className="font-medium">Prioritas:</span><br />
+                {selectedPipeline.priority_flag ? 'YES' : 'NO'}
+              </div>
+            </div>
+            {/* Buttons */}
+            <div className="flex items-center justify-between mt-5 text-xs">
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-900 hover:bg-slate-300"
+              >
+                Tutup
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => alert('Edit akan dibuat di Step 2')}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => alert('Delete akan dibuat di Step 3')}
+                  className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => alert('Copy WA akan dibuat di Step 4')}
+                  className="px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
+                >
+                  Copy WA
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
