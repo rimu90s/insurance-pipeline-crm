@@ -6,7 +6,7 @@ import { PipelineRow } from '@/types/pipeline';
 type Product = { id: string; name: string };
 type Marketer = { id: string; name: string; branch: string | null };
 
-type Props = {
+type PipelineTableProps = {
   filteredPipelines: PipelineRow[];
   filterProductId: string;
   setFilterProductId: (v: string) => void;
@@ -17,6 +17,8 @@ type Props = {
   marketers: Marketer[];
 
   exportExcel: () => void;
+
+  loading: boolean;
 
   // Aksi dari tabel
   openDetailModal: (row: PipelineRow) => void;
@@ -34,11 +36,12 @@ export default function PipelineTable({
   products,
   marketers,
   exportExcel,
+  loading,
   openDetailModal,
   onEditRow,
   onDeleteRow,
   onCopyWARow,
-}: Props) {
+}: PipelineTableProps) {
   const getProductName = (id: string) =>
     products.find((p) => p.id === id)?.name ?? '-';
 
@@ -99,10 +102,6 @@ export default function PipelineTable({
 
       {/* TABLE WRAPPER */}
       <div className="mt-1 border border-slate-100 rounded-xl overflow-hidden">
-        {/* 
-          - relative + overflow-x-auto → kalau kolom banyak, muncul horizontal scroll
-          - min-w-[900px] → biar tabel nggak terlalu gepeng di layar besar
-        */}
         <div className="relative overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse text-[11px] table-auto">
             <thead className="bg-slate-50">
@@ -117,7 +116,6 @@ export default function PipelineTable({
                   Plan / Tanggal
                 </th>
                 <th className="px-3 py-2">Kdr</th>
-                {/* Action sticky di kanan */}
                 <th className="px-3 py-2 text-center sticky right-0 bg-slate-50 z-10">
                   Action
                 </th>
@@ -125,147 +123,167 @@ export default function PipelineTable({
             </thead>
 
             <tbody>
-              {filteredPipelines.map((row) => {
-                const isPrio = !!row.priority_flag;
+              {/* LOADING STATE */}
+              {loading && (
+                <tr>
+                  <td colSpan={7} className="px-3 py-4">
+                    <div className="flex flex-col gap-2 animate-pulse">
+                      <div className="h-3 w-40 bg-slate-100 rounded" />
+                      <div className="h-3 w-64 bg-slate-100 rounded" />
+                      <div className="h-3 w-52 bg-slate-100 rounded" />
+                    </div>
+                  </td>
+                </tr>
+              )}
 
-                return (
-                  <tr
-                    key={row.id}
-                    className={`border-t border-slate-100 transition-colors ${
-                      isPrio
-                        ? 'bg-yellow-50 hover:bg-yellow-100'
-                        : 'bg-white hover:bg-slate-50/80'
-                    }`}
-                  >
-                    {/* Produk */}
-                    <td className="px-3 py-2 align-top whitespace-nowrap">
-                      <span className="font-medium text-slate-900">
-                        {getProductName(row.product_id)}
-                      </span>
-                    </td>
+              {/* DATA STATE */}
+              {!loading &&
+                filteredPipelines.map((row) => {
+                  const isPrio = !!row.priority_flag;
 
-                    {/* Nasabah + Remarks + badge PRIO */}
-                    <td className="px-3 py-2 align-top">
-                      <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-1">
-                          {isPrio && (
-                            <span className="inline-flex items-center rounded-full bg-amber-500/90 text-[9px] font-semibold text-white px-1.5 py-px">
-                              PRIO
-                            </span>
-                          )}
-                          <span className="font-medium text-slate-900">
-                            {row.customer_name}
-                          </span>
-                        </div>
-
-                        {row.remarks && (
-                          <span className="text-[10px] text-slate-500 line-clamp-2">
-                            {row.remarks}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Marketer + Branch + Class */}
-                    <td className="px-3 py-2 align-top">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-slate-800">
-                          {getMarketerName(row.marketer_id)}
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          {getBranchClass(row)}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* APE IDR + USD */}
-                    <td className="px-3 py-2 text-right align-top whitespace-nowrap">
-                      <div className="tabular-nums text-slate-900">
-                        {row.ape_idr
-                          ? 'Rp ' + row.ape_idr.toLocaleString('id-ID')
-                          : '-'}
-                      </div>
-                      <div className="text-[10px] text-slate-500 tabular-nums">
-                        {row.ape_usd
-                          ? '$ ' + row.ape_usd.toLocaleString('en-US')
-                          : ''}
-                      </div>
-                    </td>
-
-                    {/* Plan + Tanggal */}
-                    <td className="px-3 py-2 align-top whitespace-nowrap">
-                      <span className="inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-700 bg-slate-50">
-                        {row.execution_plan ?? '-'}
-                      </span>
-                      <div className="text-[10px] text-slate-500 mt-1">
-                        {row.pipeline_date ?? ''}
-                      </div>
-                    </td>
-
-                    {/* Quadrant */}
-                    <td className="px-3 py-2 align-top uppercase whitespace-nowrap">
-                      <span className="inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-800 bg-white">
-                        {row.quadrant ?? '-'}
-                      </span>
-                    </td>
-
-                    {/* ACTION ICONS – sticky di kanan */}
-                    <td
-                      className={`px-3 py-2 text-center align-top sticky right-0 z-10 border-l border-slate-100 ${
-                        isPrio ? 'bg-yellow-50' : 'bg-white'
+                  return (
+                    <tr
+                      key={row.id}
+                      className={`border-t border-slate-100 transition-colors ${
+                        isPrio
+                          ? 'bg-yellow-50 hover:bg-yellow-100'
+                          : 'bg-white hover:bg-slate-50/80'
                       }`}
                     >
-                      <div className="inline-flex items-center gap-1">
-                        {/* Detail */}
-                        <button
-                          onClick={() => openDetailModal(row)}
-                          className="px-1.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100"
-                          title="Lihat detail"
-                        >
-                          <span className="text-[11px]">🔍</span>
-                        </button>
+                      {/* Produk */}
+                      <td className="px-3 py-2 align-top whitespace-nowrap">
+                        <span className="font-medium text-slate-900">
+                          {getProductName(row.product_id)}
+                        </span>
+                      </td>
 
-                        {/* Edit */}
-                        <button
-                          onClick={() => onEditRow(row)}
-                          className="px-1.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100"
-                          title="Edit"
-                        >
-                          <span className="text-[11px]">✏️</span>
-                        </button>
+                      {/* Nasabah + Remarks + badge PRIO */}
+                      <td className="px-3 py-2 align-top">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1">
+                            {isPrio && (
+                              <span className="inline-flex items-center rounded-full bg-amber-500/90 text-[9px] font-semibold text-white px-1.5 py-px">
+                                PRIO
+                              </span>
+                            )}
+                            <span className="font-medium text-slate-900">
+                              {row.customer_name}
+                            </span>
+                          </div>
 
-                        {/* Copy WA */}
-                        <button
-                          onClick={() => onCopyWARow(row)}
-                          className="px-1.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100"
-                          title="Copy ke WhatsApp"
-                        >
-                          <span className="text-[11px]">📋</span>
-                        </button>
+                          {row.remarks && (
+                            <span className="text-[10px] text-slate-500 line-clamp-2">
+                              {row.remarks}
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
-                        {/* Delete */}
-                        <button
-                          onClick={() => onDeleteRow(row)}
-                          className="px-1.5 py-1 rounded-md border border-red-200 bg-white hover:bg-red-50"
-                          title="Hapus"
-                        >
-                          <span className="text-[11px] text-red-600">
-                            🗑️
+                      {/* Marketer + Branch + Class */}
+                      <td className="px-3 py-2 align-top">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-slate-800">
+                            {getMarketerName(row.marketer_id)}
                           </span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                          <span className="text-[10px] text-slate-500">
+                            {getBranchClass(row)}
+                          </span>
+                        </div>
+                      </td>
 
-              {filteredPipelines.length === 0 && (
+                      {/* APE IDR + USD */}
+                      <td className="px-3 py-2 text-right align-top whitespace-nowrap">
+                        <div className="tabular-nums text-slate-900">
+                          {row.ape_idr
+                            ? 'Rp ' +
+                              row.ape_idr.toLocaleString('id-ID')
+                            : '-'}
+                        </div>
+                        <div className="text-[10px] text-slate-500 tabular-nums">
+                          {row.ape_usd
+                            ? '$ ' +
+                              row.ape_usd.toLocaleString('en-US')
+                            : ''}
+                        </div>
+                      </td>
+
+                      {/* Plan + Tanggal */}
+                      <td className="px-3 py-2 align-top whitespace-nowrap">
+                        <span className="inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-700 bg-slate-50">
+                          {row.execution_plan ?? '-'}
+                        </span>
+                        <div className="text-[10px] text-slate-500 mt-1">
+                          {row.pipeline_date ?? ''}
+                        </div>
+                      </td>
+
+                      {/* Quadrant */}
+                      <td className="px-3 py-2 align-top uppercase whitespace-nowrap">
+                        <span className="inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-800 bg-white">
+                          {row.quadrant ?? '-'}
+                        </span>
+                      </td>
+
+                      {/* ACTION ICONS – sticky di kanan */}
+                      <td
+                        className={`px-3 py-2 text-center align-top sticky right-0 z-10 border-l border-slate-100 ${
+                          isPrio ? 'bg-yellow-50' : 'bg-white'
+                        }`}
+                      >
+                        <div className="inline-flex items-center gap-1">
+                          {/* Detail */}
+                          <button
+                            onClick={() => openDetailModal(row)}
+                            className="px-1.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100"
+                            title="Lihat detail"
+                          >
+                            <span className="text-[11px]">🔍</span>
+                          </button>
+
+                          {/* Edit */}
+                          <button
+                            onClick={() => onEditRow(row)}
+                            className="px-1.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100"
+                            title="Edit"
+                          >
+                            <span className="text-[11px]">✏️</span>
+                          </button>
+
+                          {/* Copy WA */}
+                          <button
+                            onClick={() => onCopyWARow(row)}
+                            className="px-1.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100"
+                            title="Copy ke WhatsApp"
+                          >
+                            <span className="text-[11px]">📋</span>
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            onClick={() => onDeleteRow(row)}
+                            className="px-1.5 py-1 rounded-md border border-red-200 bg-white hover:bg-red-50"
+                            title="Hapus"
+                          >
+                            <span className="text-[11px] text-red-600">
+                              🗑️
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+              {/* EMPTY STATE */}
+              {!loading && filteredPipelines.length === 0 && (
                 <tr>
                   <td
                     colSpan={7}
                     className="text-center text-[11px] text-slate-500 py-6"
                   >
-                    Tidak ada data pipeline.
+                    Belum ada data pipeline. Klik{' '}
+                    <span className="font-semibold">Tambah pipeline</span> untuk
+                    mulai mengisi.
                   </td>
                 </tr>
               )}

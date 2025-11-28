@@ -96,6 +96,24 @@ export default function DashboardPage() {
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  
+    // Loading state untuk table dan summary
+  const [loadingData, setLoadingData] = useState(true);
+
+  // Toast kecil untuk notifikasi
+  const [toast, setToast] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  const showToast = (
+    message: string,
+    type: 'success' | 'error' = 'success'
+  ) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
+
 
   //
   // ──────────────────────────────────────────────────────────
@@ -125,10 +143,12 @@ export default function DashboardPage() {
   //            setelah userId sudah diketahui
   // ──────────────────────────────────────────────────────────
   //
-  useEffect(() => {
-    if (!userId) return;
+useEffect(() => {
+  if (!userId) return;
 
-    const fetchAll = async () => {
+  const fetchAll = async () => {
+    setLoadingData(true);
+    try {
       const [
         { data: productsData },
         { data: marketersData },
@@ -138,8 +158,7 @@ export default function DashboardPage() {
         supabase.from('marketers').select('id, name, branch').order('name'),
         supabase
           .from('pipelines')
-          .select(
-            `
+          .select(`
             id,
             product_id,
             marketer_id,
@@ -153,8 +172,7 @@ export default function DashboardPage() {
             remarks,
             priority_flag,
             pipeline_date
-          `
-          )
+          `)
           .eq('owner_id', userId)
           .order('created_at', { ascending: false }),
       ]);
@@ -162,10 +180,14 @@ export default function DashboardPage() {
       setProducts(productsData ?? []);
       setMarketers(marketersData ?? []);
       setPipelines((pipelinesData ?? []) as PipelineRow[]);
-    };
+    } finally {
+      setLoadingData(false);
+    }
+  };
 
-    fetchAll();
-  }, [userId]);
+  fetchAll();
+}, [userId]);
+
 
   //
   // ──────────────────────────────────────────────────────────
@@ -273,6 +295,7 @@ export default function DashboardPage() {
 
       setPipelines((pipelinesData ?? []) as PipelineRow[]);
       resetForm();
+      showToast('Pipeline baru berhasil disimpan.', 'success');
       setShowCreateModal(false); // auto-tutup modal setelah sukses
     } finally {
       setSaving(false);
@@ -494,6 +517,7 @@ export default function DashboardPage() {
       }
 
       closeDetailModal();
+      showToast('Perubahan berhasil disimpan.', 'success');
     } finally {
       setSavingEdit(false);
     }
@@ -569,7 +593,8 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
     `.trim();
 
     navigator.clipboard.writeText(msg);
-    alert('Pesan pipeline sudah disalin! Tinggal paste di WhatsApp.');
+    // alert('Pesan pipeline sudah disalin! Tinggal paste di WhatsApp.');
+    showToast('Teks pipeline sudah disalin!', 'success');
   };
 
     //
@@ -718,6 +743,7 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
           totalCount={filteredPipelines.length}
           totalApeIdr={totalApeIdr}
           totalApeUsd={totalApeUsd}
+          loading={loadingData}
         />
 
         {/* Tabel pipeline + tombol tambah (form sekarang via modal) */}
@@ -755,6 +781,7 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
             onEditRow={handleEditFromTable}
             onDeleteRow={handleDeleteFromTable}
             onCopyWARow={handleCopyFromTable}
+            loading={loadingData}
           />
         </section>
       </main>
@@ -833,6 +860,18 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
         onDelete={handleDelete}
         onCopyWA={copyToWhatsApp}
       />
+
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 right-4 px-4 py-3 rounded-xl shadow-lg text-xs text-white z-50
+            ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}
+          `}
+        >
+          {toast.message}
+        </div>
+      )}
+
     </div>
   );
 }
