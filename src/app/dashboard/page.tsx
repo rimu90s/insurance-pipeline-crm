@@ -68,6 +68,7 @@ const [editMode, setEditMode] = useState(false);
 const [editForm, setEditForm] = useState<PipelineEditForm | null>(null);
 const [savingEdit, setSavingEdit] = useState(false);
 const [editError, setEditError] = useState<string | null>(null);
+const [deleting, setDeleting] = useState(false);
 
   // filter state
   const [filterProductId, setFilterProductId] = useState<string>('all');
@@ -441,6 +442,43 @@ const [editError, setEditError] = useState<string | null>(null);
       setSavingEdit(false);
     }
   };
+
+    const handleDelete = async () => {
+    if (!selectedPipeline) return;
+
+    const ok = window.confirm(
+      `Yakin ingin menghapus pipeline untuk nasabah "${selectedPipeline.customer_name}"?`
+    );
+    if (!ok) return;
+
+    setDeleting(true);
+    setEditError(null);
+
+    try {
+      const { error } = await supabase
+        .from('pipelines')
+        .delete()
+        .eq('id', selectedPipeline.id); // cukup pakai id
+
+        console.log('Delete error', error)
+
+      if (error) {
+        setEditError(error.message);
+        return;
+      }
+
+      // kalau sukses, langsung buang dari state lokal
+      setPipelines((prev) =>
+        prev.filter((row) => row.id !== selectedPipeline.id)
+      );
+
+      closeDetailModal();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+
 
   if (loadingUser) {
     return (
@@ -1215,10 +1253,13 @@ const [editError, setEditError] = useState<string | null>(null);
                   Edit
                 </button>
                 <button
-                  onClick={() => alert('Delete akan dibuat di Step 3')}
-                  className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                  // onClick={() => alert('Delete akan dibuat di Step 3')}
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Delete
+                  {/* Delete */}
+                  {deleting ? 'Menghapus...' : 'Delete'}
                 </button>
                 <button
                   onClick={() => alert('Copy WA akan dibuat di Step 4')}
