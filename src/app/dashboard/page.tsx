@@ -562,14 +562,14 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-4">
         {/* cards ringkas atas */}
         <section className="grid gap-4 md:grid-cols-3">
-          <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-500 mb-1">
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col gap-1">
+            <p className="text-[11px] font-medium text-slate-500">
               Total pipeline (terfilter)
             </p>
-            <h2 className="text-2xl font-semibold text-slate-900">
+            <h2 className="text-2xl font-semibold text-slate-900 leading-tight">
               {filteredPipelines.length}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-[11px] text-slate-500">
               Jumlah nasabah dalam pipeline sesuai filter aktif.
             </p>
           </div>
@@ -874,16 +874,17 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
               </p>
             ) : (
               <div className="mt-1 border border-slate-100 rounded-xl overflow-hidden">
-                <table className="w-full border-collapse text-[11px]">
-                  <thead className="bg-slate-50">
+                <div className='max-h-[420px] overflow-auto'>
+                  <table className="w-full border-collapse text-[11px]">
+                  <thead className="bg-slate-50 sticky top-0 z-10">
                     <tr className="text-left text-slate-600">
-                      <th className="px-3 py-2">Produk</th>
-                      <th className="px-3 py-2">Nasabah</th>
-                      <th className="px-3 py-2">Marketer</th>
-                      <th className="px-3 py-2 text-right">APE IDR</th>
-                      <th className="px-3 py-2">Plan</th>
-                      <th className="px-3 py-2">Kdr</th>
-                      <th className="px-3 py-2 text-center">Aksi</th>
+                      <th className="px-3 py-2 w-[80px]">Produk</th>
+                      <th className="px-3 py-2 min-w-[140px]">Nasabah</th>
+                      <th className="px-3 py-2 w-[120px]">Marketer</th>
+                      <th className="px-3 py-2 text-right w-[110px]">APE IDR</th>
+                      <th className="px-3 py-2 w-[70px]">Plan</th>
+                      <th className="px-3 py-2 w-[60px]">Kdr</th>
+                      <th className="px-3 py-2 text-center w-[70px]">Aksi</th>
                       {/* <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => {
@@ -901,15 +902,22 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
                     {filteredPipelines.map((row) => (
                       <tr
                         key={row.id}
-                        className={`border-t border-slate-100 ${
-                          row.priority_flag ? 'bg-yellow-50' : 'bg-white'
+                        className={`border-t border-slate-100 transition-colors ${
+                          row.priority_flag ? 'bg-yellow-50 hover:bg-yellow-100' : 'bg-white hover:bg-slate-50/80'
                         }`}
                       >
                         <td className="px-3 py-2">
-                          {getProductName(row.product_id)}
+                          <span className='font-medium text-slate-900'>
+                            {getProductName(row.product_id)}
+                          </span>
                         </td>
-                        <td className="px-3 py-2">
-                          <div className="flex flex-col">
+                        <td className="px-3 py-2 align-top">
+                          <div className="flex flex-col gap-[2px]">
+                            {row.priority_flag && (
+                              <span className='inline-flex items-center rounded-full bg-amber-500/90 text-[9px] font-semibold text-white px-1.5 py-[1px]'>
+                                PRIO
+                              </span>
+                            )}
                             <span className="font-medium text-slate-900">
                               {row.customer_name}
                             </span>
@@ -920,23 +928,27 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2 align-top text-slate-700">
                           {getMarketerName(row.marketer_id)}
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2 text-right align-top tabular-nums">
                           {row.ape_idr
                             ? row.ape_idr.toLocaleString('id-ID', {
                                 maximumFractionDigits: 0,
                               })
                             : '-'}
                         </td>
-                        <td className="px-3 py-2">
-                          {row.execution_plan ?? '-'}
+                        <td className="px-3 py-2 align-top">
+                          <span className='inline-flex items-center rounded-full border border-slate-200 px-2 py-[2px] text-[10px] uppercase tracking-wide text-slate-700 bg-slate-50'>
+                            {row.execution_plan ?? '-'}
+                          </span>
                         </td>
                         <td className="px-3 py-2 uppercase">
-                          {row.quadrant ?? '-'}
+                          <span className='inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-[2px] text-[10px] font-semibold text-slate-800 bg-white'>
+                            {row.quadrant ?? '-'}
+                          </span>
                         </td>
-                        <td className="px-3 py-2 text-center">
+                        <td className="px-3 py-2 text-center align-top">
                       <button
                         onClick={() => 
                           // {
@@ -945,7 +957,7 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
                           // }
                           openDetailModal(row)
                         }
-                        className="text-[10px] px-2 py-1 rounded bg-slate-900 text-white hover:bg-slate-800"
+                        className="text-[10px] px-2 py-1 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
                       >
                         Detail
                       </button>
@@ -954,6 +966,7 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
