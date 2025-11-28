@@ -54,7 +54,12 @@ export default function DashboardPage() {
   const [pipelines, setPipelines] = useState<PipelineRow[]>([]);
 
   //
-  // 3. STATE: Modal detail & edit pipeline
+  // 3a. STATE: Modal create pipeline (tambah baru)
+  //
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  //
+  // 3b. STATE: Modal detail & edit pipeline
   //
   const [selectedPipeline, setSelectedPipeline] =
     useState<PipelineRow | null>(null);
@@ -198,6 +203,8 @@ export default function DashboardPage() {
   //  HANDLER: Submit form create pipeline
   //           - insert ke Supabase
   //           - reload data pipelines
+  //           - reset form
+  //           - tutup modal setelah sukses
   // ──────────────────────────────────────────────────────────
   //
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -266,6 +273,7 @@ export default function DashboardPage() {
 
       setPipelines((pipelinesData ?? []) as PipelineRow[]);
       resetForm();
+      setShowCreateModal(false); // auto-tutup modal setelah sukses
     } finally {
       setSaving(false);
     }
@@ -353,6 +361,20 @@ export default function DashboardPage() {
     const filename = `pipeline-${safeEmail}-${dateStr}.xlsx`;
 
     XLSX.writeFile(wb, filename);
+  };
+
+  //
+  // ──────────────────────────────────────────────────────────
+  //  HANDLER: Modal create (buka / tutup)
+  // ──────────────────────────────────────────────────────────
+  //
+  const openCreateModal = () => {
+    resetForm();           // pastikan form bersih tiap kali buka modal
+    setShowCreateModal(true);
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
   };
 
   //
@@ -613,40 +635,26 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
           totalApeUsd={totalApeUsd}
         />
 
-        {/* Form create + tabel pipeline */}
-        <section className="grid gap-4 lg:grid-cols-2">
-          {/* Form input pipeline (komponen terpisah) */}
-          <PipelineForm
-            products={products}
-            marketers={marketers}
-            formError={formError}
-            saving={saving}
-            productId={productId}
-            setProductId={setProductId}
-            customerName={customerName}
-            setCustomerName={setCustomerName}
-            marketerId={marketerId}
-            setMarketerId={setMarketerId}
-            branch={branch}
-            setBranch={setBranch}
-            customerClass={customerClass}
-            setCustomerClass={setCustomerClass}
-            apeIdr={apeIdr}
-            setApeIdr={setApeIdr}
-            apeUsd={apeUsd}
-            setApeUsd={setApeUsd}
-            executionPlan={executionPlan}
-            setExecutionPlan={setExecutionPlan}
-            quadrant={quadrant}
-            setQuadrant={setQuadrant}
-            pipelineDate={pipelineDate}
-            setPipelineDate={setPipelineDate}
-            remarks={remarks}
-            setRemarks={setRemarks}
-            priorityFlag={priorityFlag}
-            setPriorityFlag={setPriorityFlag}
-            onSubmit={handleSubmit}
-          />
+        {/* Tabel pipeline + tombol tambah (form sekarang via modal) */}
+        <section className="space-y-3">
+          {/* Bar atas: judul & tombol tambah pipeline */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                Data pipeline
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Kelola pipeline harian, filter, dan export laporan untuk atasan.
+              </p>
+            </div>
+            <button
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-1 rounded-lg bg-slate-900 text-white px-3 py-1.5 text-xs font-medium hover:bg-slate-800 shadow-sm"
+            >
+              <span className="text-base leading-none">＋</span>
+              <span>Tambah pipeline</span>
+            </button>
+          </div>
 
           {/* List pipeline + filter + export */}
           <PipelineTable
@@ -662,6 +670,61 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
           />
         </section>
       </main>
+
+      {/* Modal create pipeline (tambah baru) */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-4 shadow-xl">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Tambah pipeline baru
+              </h3>
+              <button
+                onClick={closeCreateModal}
+                className="text-[11px] text-slate-500 hover:text-slate-700"
+              >
+                Tutup
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-500 mb-3">
+              Lengkapi data sesuai format laporan (produk, marketer, APE, kuadran, dll.).
+            </p>
+
+            <PipelineForm
+              products={products}
+              marketers={marketers}
+              formError={formError}
+              saving={saving}
+              productId={productId}
+              setProductId={setProductId}
+              customerName={customerName}
+              setCustomerName={setCustomerName}
+              marketerId={marketerId}
+              setMarketerId={setMarketerId}
+              branch={branch}
+              setBranch={setBranch}
+              customerClass={customerClass}
+              setCustomerClass={setCustomerClass}
+              apeIdr={apeIdr}
+              setApeIdr={setApeIdr}
+              apeUsd={apeUsd}
+              setApeUsd={setApeUsd}
+              executionPlan={executionPlan}
+              setExecutionPlan={setExecutionPlan}
+              quadrant={quadrant}
+              setQuadrant={setQuadrant}
+              pipelineDate={pipelineDate}
+              setPipelineDate={setPipelineDate}
+              remarks={remarks}
+              setRemarks={setRemarks}
+              priorityFlag={priorityFlag}
+              setPriorityFlag={setPriorityFlag}
+              onSubmit={handleSubmit}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Modal detail / edit / delete / copy WA */}
       <PipelineDetailModal
