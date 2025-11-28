@@ -572,6 +572,91 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
     alert('Pesan pipeline sudah disalin! Tinggal paste di WhatsApp.');
   };
 
+    //
+  // ──────────────────────────────────────────────────────────
+  //  HANDLER: Aksi langsung dari tabel (icon di kolom Action)
+  // ──────────────────────────────────────────────────────────
+  //
+  const handleEditFromTable = (row: PipelineRow) => {
+    // Buka modal langsung dalam mode EDIT dengan data row
+    setSelectedPipeline(row);
+    setShowDetailModal(true);
+    setEditMode(true);
+    setEditError(null);
+    setEditForm({
+      product_id: row.product_id,
+      marketer_id: row.marketer_id ?? '',
+      customer_name: row.customer_name,
+      branch: row.branch ?? '',
+      class: row.class ?? '',
+      ape_idr: row.ape_idr ? String(row.ape_idr) : '',
+      ape_usd: row.ape_usd ? String(row.ape_usd) : '',
+      execution_plan: row.execution_plan ?? 'week 1',
+      quadrant: row.quadrant ?? 'k1',
+      remarks: row.remarks ?? '',
+      priority_flag: !!row.priority_flag,
+      pipeline_date: row.pipeline_date ?? '',
+    });
+  };
+
+  const handleDeleteFromTable = async (row: PipelineRow) => {
+    const ok = window.confirm(
+      `Yakin ingin menghapus pipeline untuk nasabah "${row.customer_name}"?`
+    );
+    if (!ok) return;
+
+    try {
+      const { error } = await supabase
+        .from('pipelines')
+        .delete()
+        .eq('id', row.id);
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      setPipelines((prev) => prev.filter((p) => p.id !== row.id));
+    } catch (e) {
+      console.error(e);
+      alert('Terjadi kesalahan saat menghapus data.');
+    }
+  };
+
+  const handleCopyFromTable = (row: PipelineRow) => {
+    const product = getProductName(row.product_id);
+    const marketer = getMarketerName(row.marketer_id);
+
+    const msg = `
+    🔥 Pipeline Update
+
+    Produk: ${product}
+    Nasabah: ${row.customer_name}
+    Marketer: ${marketer}
+    Branch: ${row.branch ?? '-'}
+    Class: ${row.class ?? '-'}
+    APE IDR: ${
+          row.ape_idr
+            ? 'Rp ' + row.ape_idr.toLocaleString('id-ID')
+            : '-'
+        }
+    APE USD: ${
+          row.ape_usd
+            ? '$' + row.ape_usd.toLocaleString('en-US')
+            : '-'
+        }
+    Plan: ${row.execution_plan ?? '-'}
+    Quadrant: ${row.quadrant ?? '-'}
+    Remarks: ${row.remarks ?? '-'}
+    Tanggal: ${row.pipeline_date ?? '-'}
+    Prioritas: ${row.priority_flag ? 'YES' : 'NO'}
+    `.trim();
+  
+    navigator.clipboard.writeText(msg);
+    alert('Pesan pipeline sudah disalin! Tinggal paste di WhatsApp.');
+  };
+
+
   //
   // ──────────────────────────────────────────────────────────
   //  RENDER: Loading state
@@ -667,6 +752,9 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
             marketers={marketers}
             exportExcel={exportExcel}
             openDetailModal={openDetailModal}
+            onEditRow={handleEditFromTable}
+            onDeleteRow={handleDeleteFromTable}
+            onCopyWARow={handleCopyFromTable}
           />
         </section>
       </main>
