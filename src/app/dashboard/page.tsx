@@ -478,6 +478,40 @@ const [deleting, setDeleting] = useState(false);
     }
   };
 
+  const copyToWhatsApp = () => {
+  if (!selectedPipeline) return;
+
+  const product = getProductName(selectedPipeline.product_id);
+  const marketer = getMarketerName(selectedPipeline.marketer_id);
+
+  const msg = `
+🔥 Pipeline Update
+
+Produk: ${product}
+Nasabah: ${selectedPipeline.customer_name}
+Marketer: ${marketer}
+Branch: ${selectedPipeline.branch ?? '-'}
+Class: ${selectedPipeline.class ?? '-'}
+APE IDR: ${
+    selectedPipeline.ape_idr
+      ? 'Rp ' + selectedPipeline.ape_idr.toLocaleString('id-ID')
+      : '-'
+  }
+APE USD: ${
+    selectedPipeline.ape_usd
+      ? '$' + selectedPipeline.ape_usd.toLocaleString('en-US')
+      : '-'
+  }
+Plan: ${selectedPipeline.execution_plan ?? '-'}
+Quadrant: ${selectedPipeline.quadrant ?? '-'}
+Remarks: ${selectedPipeline.remarks ?? '-'}
+Tanggal: ${selectedPipeline.pipeline_date ?? '-'}
+Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
+  `.trim();
+
+  navigator.clipboard.writeText(msg);
+  alert('Pesan pipeline sudah disalin! Tinggal paste di WhatsApp.');
+};
 
 
   if (loadingUser) {
@@ -1262,7 +1296,8 @@ const [deleting, setDeleting] = useState(false);
                   {deleting ? 'Menghapus...' : 'Delete'}
                 </button>
                 <button
-                  onClick={() => alert('Copy WA akan dibuat di Step 4')}
+                  // onClick={() => alert('Copy WA akan dibuat di Step 4')}
+                  onClick={copyToWhatsApp}
                   className="px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
                 >
                   Copy WA
