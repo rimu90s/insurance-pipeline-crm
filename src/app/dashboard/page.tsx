@@ -12,6 +12,8 @@ import PipelineDetailModal from './components/PipelineDetailModal';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import Link from 'next/link';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
+const FILTER_KEY = 'sales-pipeline-filters-v1';
+
 
 //
 // ──────────────────────────────────────────────────────────────
@@ -80,6 +82,40 @@ export default function DashboardPage() {
   const [filterProductId, setFilterProductId] = useState<string>('all');
   const [filterQuadrant, setFilterQuadrant] = useState<string>('all');
   const [filterPlan, setFilterPlan] = useState<string>('all');
+
+    // LOAD FILTER from localStorage (sekali saat awal)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('sales-pipeline-filters-v1');
+      if (!raw) return;
+
+      const saved = JSON.parse(raw);
+
+      if (saved.productId) setFilterProductId(saved.productId);
+      if (saved.plan) setFilterPlan(saved.plan);
+      if (saved.quadrant) setFilterQuadrant(saved.quadrant);
+
+    } catch (e) {
+      console.error('Failed to load filters', e);
+    }
+  }, []);
+
+
+    // simpan filter ke localStorage setiap kali berubah
+  useEffect(() => {
+    const payload = {
+      productId: filterProductId,
+      plan: filterPlan,
+      quadrant: filterQuadrant,
+    };
+
+    try {
+      localStorage.setItem(FILTER_KEY, JSON.stringify(payload));
+    } catch (e) {
+      // kalau private mode / error storage, biarkan saja
+      console.error('Failed to save filters', e);
+    }
+  }, [filterProductId, filterPlan, filterQuadrant]);
 
   //
   // 5. STATE: Form create pipeline (dipass ke PipelineForm)
