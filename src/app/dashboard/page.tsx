@@ -78,6 +78,7 @@ export default function DashboardPage() {
   //
   const [filterProductId, setFilterProductId] = useState<string>('all');
   const [filterQuadrant, setFilterQuadrant] = useState<string>('all');
+  const [filterPlan, setFilterPlan] = useState<string>('all');
 
   //
   // 5. STATE: Form create pipeline (dipass ke PipelineForm)
@@ -328,13 +329,19 @@ useEffect(() => {
     const matchProduct =
       filterProductId === 'all' ? true : row.product_id === filterProductId;
 
+    const matchPlan =
+      filterPlan === 'all'
+        ? true
+        : (row.execution_plan ?? '').toLowerCase() ===
+          filterPlan.toLowerCase();
+
     const matchQuadrant =
       filterQuadrant === 'all'
         ? true
         : (row.quadrant ?? '').toLowerCase() ===
           filterQuadrant.toLowerCase();
 
-    return matchProduct && matchQuadrant;
+    return matchProduct && matchPlan && matchQuadrant;
   });
 
   const totalApeIdr = filteredPipelines.reduce(
@@ -779,6 +786,8 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
             filteredPipelines={filteredPipelines}
             filterProductId={filterProductId}
             setFilterProductId={setFilterProductId}
+            filterPlan={filterPlan}
+            setFilterPlan={setFilterPlan}
             filterQuadrant={filterQuadrant}
             setFilterQuadrant={setFilterQuadrant}
             products={products}

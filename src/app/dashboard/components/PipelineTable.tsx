@@ -10,6 +10,8 @@ type PipelineTableProps = {
   filteredPipelines: PipelineRow[];
   filterProductId: string;
   setFilterProductId: (v: string) => void;
+  filterPlan: string;
+  setFilterPlan: (v: string) => void;
   filterQuadrant: string;
   setFilterQuadrant: (v: string) => void;
 
@@ -33,6 +35,8 @@ export default function PipelineTable({
   filteredPipelines,
   filterProductId,
   setFilterProductId,
+  filterPlan,
+  setFilterPlan,
   filterQuadrant,
   setFilterQuadrant,
   products,
@@ -148,6 +152,21 @@ export default function PipelineTable({
                   {p.name}
                 </option>
               ))}
+            </select>
+
+            <span className="h-3 w-px bg-slate-200" />
+
+            {/* Filter plan */}
+            <select
+              className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
+              value={filterPlan}
+              onChange={(e) => setFilterPlan(e.target.value)}
+            >
+              <option value="all">Semua plan</option>
+              <option value="week 1">week 1</option>
+              <option value="week 2">week 2</option>
+              <option value="week 3">week 3</option>
+              <option value="week 4">week 4</option>
             </select>
 
             <span className="h-3 w-px bg-slate-200" />
