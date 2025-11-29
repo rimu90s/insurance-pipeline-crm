@@ -128,46 +128,54 @@ export default function PipelineTable({
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-900 mb-1">
-        Data pipeline
-      </h3>
-      <p className="text-xs text-slate-500 mb-3">
-        Filter, lihat detail, export Excel, dan kelola pipeline Anda.
-      </p>
+      {/* Toolbar atas: filter + export */}
+      <div className="flex flex-col gap-2 mb-3 md:flex-row md:items-center md:justify-between">
+        {/* Kiri: filter */}
+        <div className="flex flex-wrap gap-2">
+          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-2 py-1">
+            <span className="text-[11px] text-slate-500 flex items-center gap-1">
+              <span>🔍</span>
+              <span>Filter</span>
+            </span>
+            <select
+              className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
+              value={filterProductId}
+              onChange={(e) => setFilterProductId(e.target.value)}
+            >
+              <option value="all">Semua produk</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
 
-      {/* FILTER + EXPORT */}
-      <div className="flex gap-2 mb-3 flex-wrap">
-        <select
-          className="border text-xs border-slate-200 rounded-lg px-3 py-2"
-          value={filterProductId}
-          onChange={(e) => setFilterProductId(e.target.value)}
-        >
-          <option value="all">Semua produk</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+            <span className="h-3 w-px bg-slate-200" />
 
-        <select
-          className="border text-xs border-slate-200 rounded-lg px-3 py-2"
-          value={filterQuadrant}
-          onChange={(e) => setFilterQuadrant(e.target.value)}
-        >
-          <option value="all">Semua quadrant</option>
-          <option value="k1">k1</option>
-          <option value="k2">k2</option>
-          <option value="k3">k3</option>
-          <option value="k4">k4</option>
-        </select>
+            <select
+              className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
+              value={filterQuadrant}
+              onChange={(e) => setFilterQuadrant(e.target.value)}
+            >
+              <option value="all">Semua quadrant</option>
+              <option value="k1">k1</option>
+              <option value="k2">k2</option>
+              <option value="k3">k3</option>
+              <option value="k4">k4</option>
+            </select>
+          </div>
+        </div>
 
-        <button
-          onClick={exportExcel}
-          className="text-xs px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
-        >
-          Export Excel
-        </button>
+        {/* Kanan: Export */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportExcel}
+            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-800 hover:bg-slate-50"
+          >
+            <span>⬇️</span>
+            <span>Export Excel</span>
+          </button>
+        </div>
       </div>
 
       {/* TABLE WRAPPER */}
@@ -285,10 +293,10 @@ export default function PipelineTable({
 
                       {/* Nasabah + Remarks + badge PRIO */}
                       <td className="px-3 py-2 align-top">
-                        <div className="flex flex-col gap-0.5">
+                        <div className="flex flex-col gap-[2px]">
                           <div className="flex items-center gap-1">
                             {isPrio && (
-                              <span className="inline-flex items-center rounded-full bg-amber-500/90 text-[9px] font-semibold text-white px-1.5 py-px">
+                              <span className="inline-flex items-center rounded-full bg-amber-500/90 text-[9px] font-semibold text-white px-1.5 py-[1px]">
                                 PRIO
                               </span>
                             )}
@@ -307,7 +315,7 @@ export default function PipelineTable({
 
                       {/* Marketer + Branch + Class */}
                       <td className="px-3 py-2 align-top">
-                        <div className="flex flex-col gap-0.5">
+                        <div className="flex flex-col gap-[2px]">
                           <span className="text-slate-800">
                             {getMarketerName(row.marketer_id)}
                           </span>
@@ -335,7 +343,7 @@ export default function PipelineTable({
 
                       {/* Plan + Tanggal */}
                       <td className="px-3 py-2 align-top whitespace-nowrap">
-                        <span className="inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-700 bg-slate-50">
+                        <span className="inline-flex items-center rounded-full border border-slate-200 px-2 py-[2px] text-[10px] uppercase tracking-wide text-slate-700 bg-slate-50">
                           {row.execution_plan ?? '-'}
                         </span>
                         <div className="text-[10px] text-slate-500 mt-1">
@@ -345,7 +353,7 @@ export default function PipelineTable({
 
                       {/* Quadrant */}
                       <td className="px-3 py-2 align-top uppercase whitespace-nowrap">
-                        <span className="inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-800 bg-white">
+                        <span className="inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-[2px] text-[10px] font-semibold text-slate-800 bg-white">
                           {row.quadrant ?? '-'}
                         </span>
                       </td>
@@ -408,8 +416,8 @@ export default function PipelineTable({
                     className="text-center text-[11px] text-slate-500 py-6"
                   >
                     Belum ada data pipeline. Klik{' '}
-                    <span className="font-semibold">Tambah pipeline</span> untuk
-                    mulai mengisi.
+                      <span className="font-semibold">Tambah pipeline</span> untuk
+                      mulai mengisi.
                   </td>
                 </tr>
               )}
