@@ -15,6 +15,14 @@ type Marketer = {
   branch: string | null;
 };
 
+const generateCodeFromName = (name: string) =>
+  name
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_') // ganti spasi & simbol jadi _
+    .replace(/^_+|_+$/g, '')     // buang _ di awal/akhir
+    .slice(0, 12);               // batasi panjang 12 karakter
+
+
 export default function SettingsPage() {
   const router = useRouter();
 
@@ -96,30 +104,32 @@ export default function SettingsPage() {
   // PRODUCTS
   // ─────────────────────────────────────────────
   const handleAddProduct = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const name = newProductName.trim();
-    if (!name) return;
+  e.preventDefault();
+  const name = newProductName.trim();
+  if (!name) return;
 
-    setSavingProduct(true);
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .insert({ name })
-        .select('id, name')
-        .single();
+  const code = generateCodeFromName(name);
 
-      if (error) {
-        showToast(error.message, 'error');
-        return;
-      }
+  setSavingProduct(true);
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .insert({ name, code })
+      .select('id, name')
+      .single();
 
-      setProducts((prev) => [...prev, data as Product]);
-      setNewProductName('');
-      showToast('Produk baru berhasil ditambahkan.', 'success');
-    } finally {
-      setSavingProduct(false);
+    if (error) {
+      showToast(error.message, 'error');
+      return;
     }
-  };
+
+    setProducts((prev) => [...prev, data as Product]);
+    setNewProductName('');
+    showToast('Produk baru berhasil ditambahkan.', 'success');
+  } finally {
+    setSavingProduct(false);
+  }
+};
 
   const startEditProduct = (prod: Product) => {
     setEditingProductId(prod.id);
@@ -184,32 +194,39 @@ export default function SettingsPage() {
   // MARKETERS
   // ─────────────────────────────────────────────
   const handleAddMarketer = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const name = newMarketerName.trim();
-    const branch = newMarketerBranch.trim() || null;
-    if (!name) return;
+  e.preventDefault();
+  const name = newMarketerName.trim();
+  const branch = newMarketerBranch.trim();
 
-    setSavingMarketer(true);
-    try {
-      const { data, error } = await supabase
-        .from('marketers')
-        .insert({ name, branch })
-        .select('id, name, branch')
-        .single();
+  if (!name || !branch) {
+    showToast('Nama marketer dan cabang wajib diisi.', 'error');
+    return;
+  }
 
-      if (error) {
-        showToast(error.message, 'error');
-        return;
-      }
+  const code = generateCodeFromName(name);
 
-      setMarketers((prev) => [...prev, data as Marketer]);
-      setNewMarketerName('');
-      setNewMarketerBranch('');
-      showToast('Marketer baru berhasil ditambahkan.', 'success');
-    } finally {
-      setSavingMarketer(false);
+  setSavingMarketer(true);
+  try {
+    const { data, error } = await supabase
+      .from('marketers')
+      .insert({ name, branch, code })
+      .select('id, name, branch')
+      .single();
+
+    if (error) {
+      showToast(error.message, 'error');
+      return;
     }
-  };
+
+    setMarketers((prev) => [...prev, data as Marketer]);
+    setNewMarketerName('');
+    setNewMarketerBranch('');
+    showToast('Marketer baru berhasil ditambahkan.', 'success');
+  } finally {
+    setSavingMarketer(false);
+  }
+};
+
 
   const startEditMarketer = (mk: Marketer) => {
     setEditingMarketerId(mk.id);
@@ -479,7 +496,7 @@ export default function SettingsPage() {
                   <input
                     type="text"
                     className="flex-1 border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-                    placeholder="Branch / cabang (opsional)"
+                    placeholder="Branch / cabang"
                     value={newMarketerBranch}
                     onChange={(e) => setNewMarketerBranch(e.target.value)}
                   />
