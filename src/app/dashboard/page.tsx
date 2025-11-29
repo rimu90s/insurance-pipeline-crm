@@ -10,6 +10,7 @@ import PipelineForm from './components/PipelineForm';
 import PipelineTable from './components/PipelineTable';
 import PipelineDetailModal from './components/PipelineDetailModal';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
+import Link from 'next/link';
 
 //
 // ──────────────────────────────────────────────────────────────
@@ -726,6 +727,12 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
                 {userEmail}
               </p>
             </div>
+            <Link
+              href="/settings"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white hover:bg-slate-50"
+            >
+              Settings
+            </Link>
             <button
               onClick={handleLogout}
               className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white hover:bg-slate-50"
