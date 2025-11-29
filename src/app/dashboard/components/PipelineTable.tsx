@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { PipelineRow } from '@/types/pipeline';
 
 type Product = { id: string; name: string };
@@ -26,6 +26,8 @@ type PipelineTableProps = {
   onDeleteRow: (row: PipelineRow) => void;
   onCopyWARow: (row: PipelineRow) => void;
 };
+
+type SortKey = 'product' | 'customer' | 'ape_idr' | 'plan' | 'quadrant' | null;
 
 export default function PipelineTable({
   filteredPipelines,
@@ -55,6 +57,74 @@ export default function PipelineTable({
     ].filter(Boolean);
     return parts.join(' • ') || '-';
   };
+
+  //
+  // SORTING STATE
+  //
+  const [sortBy, setSortBy] = useState<SortKey>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (key: SortKey) => {
+    if (sortBy === key) {
+      // toggle asc <-> desc
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(key);
+      setSortDir('asc');
+    }
+  };
+
+  const renderSortIcon = (key: SortKey) => {
+    if (sortBy !== key) return null;
+    return (
+      <span className="text-[9px] text-slate-500">
+        {sortDir === 'asc' ? '▲' : '▼'}
+      </span>
+    );
+  };
+
+  //
+  // APPLY SORTING ke data yang sudah difilter
+  //
+  const sortedPipelines = (() => {
+    const rows = [...filteredPipelines];
+
+    if (!sortBy) return rows;
+
+    return rows.sort((a, b) => {
+      let va: string | number = '';
+      let vb: string | number = '';
+
+      switch (sortBy) {
+        case 'product':
+          va = getProductName(a.product_id).toLowerCase();
+          vb = getProductName(b.product_id).toLowerCase();
+          break;
+        case 'customer':
+          va = (a.customer_name ?? '').toLowerCase();
+          vb = (b.customer_name ?? '').toLowerCase();
+          break;
+        case 'ape_idr':
+          va = a.ape_idr ?? 0;
+          vb = b.ape_idr ?? 0;
+          break;
+        case 'plan':
+          va = (a.execution_plan ?? '').toLowerCase();
+          vb = (b.execution_plan ?? '').toLowerCase();
+          break;
+        case 'quadrant':
+          va = (a.quadrant ?? '').toLowerCase();
+          vb = (b.quadrant ?? '').toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  })();
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
@@ -106,16 +176,72 @@ export default function PipelineTable({
           <table className="w-full min-w-[900px] border-collapse text-[11px] table-auto">
             <thead className="bg-slate-50">
               <tr className="text-left text-slate-600">
-                <th className="px-3 py-2">Produk</th>
-                <th className="px-3 py-2">Nasabah</th>
-                <th className="px-3 py-2">Marketer / Branch / Class</th>
+                {/* PRODUCT (sortable) */}
+                <th className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSort('product')}
+                    className="inline-flex items-center gap-1 hover:text-slate-900"
+                  >
+                    <span>Produk</span>
+                    {renderSortIcon('product')}
+                  </button>
+                </th>
+
+                {/* CUSTOMER (sortable) */}
+                <th className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSort('customer')}
+                    className="inline-flex items-center gap-1 hover:text-slate-900"
+                  >
+                    <span>Nasabah</span>
+                    {renderSortIcon('customer')}
+                  </button>
+                </th>
+
+                {/* MARKETER info (tidak disort dulu) */}
+                <th className="px-3 py-2">
+                  Marketer / Branch / Class
+                </th>
+
+                {/* APE (sortable by IDR) */}
                 <th className="px-3 py-2 text-right whitespace-nowrap">
-                  APE (IDR / USD)
+                  <button
+                    type="button"
+                    onClick={() => handleSort('ape_idr')}
+                    className="inline-flex items-center gap-1 hover:text-slate-900"
+                  >
+                    <span>APE (IDR / USD)</span>
+                    {renderSortIcon('ape_idr')}
+                  </button>
                 </th>
+
+                {/* PLAN (sortable) */}
                 <th className="px-3 py-2 whitespace-nowrap">
-                  Plan / Tanggal
+                  <button
+                    type="button"
+                    onClick={() => handleSort('plan')}
+                    className="inline-flex items-center gap-1 hover:text-slate-900"
+                  >
+                    <span>Plan / Tanggal</span>
+                    {renderSortIcon('plan')}
+                  </button>
                 </th>
-                <th className="px-3 py-2">Kdr</th>
+
+                {/* QUADRANT (sortable) */}
+                <th className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSort('quadrant')}
+                    className="inline-flex items-center gap-1 hover:text-slate-900"
+                  >
+                    <span>Kdr</span>
+                    {renderSortIcon('quadrant')}
+                  </button>
+                </th>
+
+                {/* ACTION – sticky kanan, tidak di-sort */}
                 <th className="px-3 py-2 text-center sticky right-0 bg-slate-50 z-10">
                   Action
                 </th>
@@ -138,7 +264,7 @@ export default function PipelineTable({
 
               {/* DATA STATE */}
               {!loading &&
-                filteredPipelines.map((row) => {
+                sortedPipelines.map((row) => {
                   const isPrio = !!row.priority_flag;
 
                   return (
@@ -275,7 +401,7 @@ export default function PipelineTable({
                 })}
 
               {/* EMPTY STATE */}
-              {!loading && filteredPipelines.length === 0 && (
+              {!loading && sortedPipelines.length === 0 && (
                 <tr>
                   <td
                     colSpan={7}
