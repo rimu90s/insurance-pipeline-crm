@@ -11,6 +11,7 @@ import PipelineTable from './components/PipelineTable';
 import PipelineDetailModal from './components/PipelineDetailModal';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import Link from 'next/link';
+import { buildWhatsAppMessage } from '@/utils/whatsapp';
 
 //
 // ──────────────────────────────────────────────────────────────
@@ -570,40 +571,34 @@ useEffect(() => {
   // ──────────────────────────────────────────────────────────
   //
   const copyToWhatsApp = () => {
-    if (!selectedPipeline) return;
+  if (!selectedPipeline) return;
 
-    const product = getProductName(selectedPipeline.product_id);
-    const marketer = getMarketerName(selectedPipeline.marketer_id);
+  const product = getProductName(selectedPipeline.product_id);
+  const marketer = getMarketerName(selectedPipeline.marketer_id);
 
-    const msg = `
-🔥 Pipeline Update
+  const msg = buildWhatsAppMessage(
+    selectedPipeline,
+    product,
+    marketer,
+    'full' // modal detail = format lengkap
+  );
 
-Produk: ${product}
-Nasabah: ${selectedPipeline.customer_name}
-Marketer: ${marketer}
-Branch: ${selectedPipeline.branch ?? '-'}
-Class: ${selectedPipeline.class ?? '-'}
-APE IDR: ${
-      selectedPipeline.ape_idr
-        ? 'Rp ' + selectedPipeline.ape_idr.toLocaleString('id-ID')
-        : '-'
-    }
-APE USD: ${
-      selectedPipeline.ape_usd
-        ? '$' + selectedPipeline.ape_usd.toLocaleString('en-US')
-        : '-'
-    }
-Plan: ${selectedPipeline.execution_plan ?? '-'}
-Quadrant: ${selectedPipeline.quadrant ?? '-'}
-Remarks: ${selectedPipeline.remarks ?? '-'}
-Tanggal: ${selectedPipeline.pipeline_date ?? '-'}
-Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
-    `.trim();
+  navigator.clipboard.writeText(msg);
+  showToast('Pesan pipeline (full) sudah disalin.', 'success');
+};
 
-    navigator.clipboard.writeText(msg);
-    // alert('Pesan pipeline sudah disalin! Tinggal paste di WhatsApp.');
-    showToast('Teks pipeline sudah disalin!', 'success');
+
+  const copyShortFromTable = (row: PipelineRow) => {
+    const product = getProductName(row.product_id);
+    const marketer = getMarketerName(row.marketer_id);
+
+    const message = buildWhatsAppMessage(row, product, marketer, 'short');
+
+    navigator.clipboard.writeText(message);
+    showToast('Pesan pipeline (ringkas) sudah disalin.', 'success');
   };
+
+
 
     //
   // ──────────────────────────────────────────────────────────
@@ -655,40 +650,6 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
       alert('Terjadi kesalahan saat menghapus data.');
     }
   };
-
-  const handleCopyFromTable = (row: PipelineRow) => {
-    const product = getProductName(row.product_id);
-    const marketer = getMarketerName(row.marketer_id);
-
-    const msg = `
-    🔥 Pipeline Update
-
-    Produk: ${product}
-    Nasabah: ${row.customer_name}
-    Marketer: ${marketer}
-    Branch: ${row.branch ?? '-'}
-    Class: ${row.class ?? '-'}
-    APE IDR: ${
-          row.ape_idr
-            ? 'Rp ' + row.ape_idr.toLocaleString('id-ID')
-            : '-'
-        }
-    APE USD: ${
-          row.ape_usd
-            ? '$' + row.ape_usd.toLocaleString('en-US')
-            : '-'
-        }
-    Plan: ${row.execution_plan ?? '-'}
-    Quadrant: ${row.quadrant ?? '-'}
-    Remarks: ${row.remarks ?? '-'}
-    Tanggal: ${row.pipeline_date ?? '-'}
-    Prioritas: ${row.priority_flag ? 'YES' : 'NO'}
-    `.trim();
-  
-    navigator.clipboard.writeText(msg);
-    alert('Pesan pipeline sudah disalin! Tinggal paste di WhatsApp.');
-  };
-
 
   //
   // ──────────────────────────────────────────────────────────
@@ -793,11 +754,11 @@ Prioritas: ${selectedPipeline.priority_flag ? 'YES' : 'NO'}
             products={products}
             marketers={marketers}
             exportExcel={exportExcel}
+            loading={loadingData}
             openDetailModal={openDetailModal}
             onEditRow={handleEditFromTable}
             onDeleteRow={handleDeleteFromTable}
-            onCopyWARow={handleCopyFromTable}
-            loading={loadingData}
+            onCopyWARow={copyShortFromTable}
           />
         </section>
       </main>

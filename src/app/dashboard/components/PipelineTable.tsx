@@ -312,10 +312,10 @@ export default function PipelineTable({
 
                       {/* Nasabah + Remarks + badge PRIO */}
                       <td className="px-3 py-2 align-top">
-                        <div className="flex flex-col gap-[2px]">
+                        <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-1">
                             {isPrio && (
-                              <span className="inline-flex items-center rounded-full bg-amber-500/90 text-[9px] font-semibold text-white px-1.5 py-[1px]">
+                              <span className="inline-flex items-center rounded-full bg-amber-500/90 text-[9px] font-semibold text-white px-1.5 py-px">
                                 PRIO
                               </span>
                             )}
@@ -334,7 +334,7 @@ export default function PipelineTable({
 
                       {/* Marketer + Branch + Class */}
                       <td className="px-3 py-2 align-top">
-                        <div className="flex flex-col gap-[2px]">
+                        <div className="flex flex-col gap-0.5">
                           <span className="text-slate-800">
                             {getMarketerName(row.marketer_id)}
                           </span>
@@ -362,7 +362,7 @@ export default function PipelineTable({
 
                       {/* Plan + Tanggal */}
                       <td className="px-3 py-2 align-top whitespace-nowrap">
-                        <span className="inline-flex items-center rounded-full border border-slate-200 px-2 py-[2px] text-[10px] uppercase tracking-wide text-slate-700 bg-slate-50">
+                        <span className="inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-700 bg-slate-50">
                           {row.execution_plan ?? '-'}
                         </span>
                         <div className="text-[10px] text-slate-500 mt-1">
@@ -372,7 +372,7 @@ export default function PipelineTable({
 
                       {/* Quadrant */}
                       <td className="px-3 py-2 align-top uppercase whitespace-nowrap">
-                        <span className="inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-[2px] text-[10px] font-semibold text-slate-800 bg-white">
+                        <span className="inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-800 bg-white">
                           {row.quadrant ?? '-'}
                         </span>
                       </td>
