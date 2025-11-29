@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { PipelineRow } from '@/types/pipeline';
+import { buildWhatsAppLineShort } from '@/utils/whatsapp';
 
 type Product = { id: string; name: string };
 type Marketer = { id: string; name: string; branch: string | null };
@@ -130,6 +131,28 @@ export default function PipelineTable({
     });
   })();
 
+  const handleCopyAllWA = () => {
+    if (sortedPipelines.length === 0) {
+      alert('Tidak ada data pipeline untuk disalin (periksa filter).');
+      return;
+    }
+
+    const lines = sortedPipelines.map((row, index) => {
+      const pName = getProductName(row.product_id);
+      const mName = getMarketerName(row.marketer_id);
+      const line = buildWhatsAppLineShort(row, pName, mName);
+      return `${index + 1}. ${line}`;
+    });
+
+    const header = `🔥 PIPELINE REPORT (terfilter)\nTotal: ${
+      sortedPipelines.length
+    } data\n`;
+    const message = header + '\n' + lines.join('\n');
+
+    navigator.clipboard.writeText(message);
+    alert('Rekap pipeline (sesuai filter) sudah disalin. Tinggal paste di WhatsApp.');
+  };
+
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
       {/* Toolbar atas: filter + export */}
@@ -185,7 +208,7 @@ export default function PipelineTable({
           </div>
         </div>
 
-        {/* Kanan: Export */}
+        {/* Kanan: Export & Copy WA */}
         <div className="flex items-center gap-2">
           <button
             onClick={exportExcel}
@@ -193,6 +216,13 @@ export default function PipelineTable({
           >
             <span>⬇️</span>
             <span>Export Excel</span>
+          </button>
+          <button
+            onClick={handleCopyAllWA}
+            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-slate-800"
+          >
+            <span>📲</span>
+            <span>Copy WA (filter)</span>
           </button>
         </div>
       </div>

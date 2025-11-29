@@ -43,3 +43,20 @@ export const buildWhatsAppMessage = (
     `Prioritas: ${row.priority_flag ? 'YES' : 'NO'}`
   ).trim();
 };
+
+export const buildWhatsAppLineShort = (
+  row: PipelineRow,
+  productName: string,
+  marketerName: string
+) => {
+  const apeIdr = row.ape_idr
+    ? 'Rp ' + row.ape_idr.toLocaleString('id-ID')
+    : '-';
+
+  const plan = row.execution_plan ?? '-';
+  const quad = row.quadrant ?? '-';
+  const prio = row.priority_flag ? 'PRIO' : '';
+
+  // 1 baris ringkas, enak untuk rekap list
+  return `${productName} | ${row.customer_name} | ${marketerName} | ${apeIdr} | ${plan} | ${quad} ${prio}`.trim();
+};
