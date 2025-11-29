@@ -1,179 +1,235 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
+type Mode = 'login' | 'register';
+
 export default function AuthPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<Mode>('login');
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Kalau user sudah login, langsung lempar ke dashboard
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        router.replace('/dashboard');
+      }
+    };
+    checkUser();
+  }, [router]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setErrorMsg(null);
+
+    if (!email || !password) {
+      setErrorMsg('Email dan password wajib diisi.');
+      return;
+    }
+
+    if (mode === 'register' && password !== confirmPwd) {
+      setErrorMsg('Konfirmasi password tidak sama.');
+      return;
+    }
+
     setLoading(true);
-    setError(null);
-    setMessage(null);
-
     try {
-      if (!email || !password) {
-        throw new Error('Email dan password wajib diisi.');
-      }
-
-      if (mode === 'register') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
-
-        setMessage('Registrasi berhasil. Silakan login dengan akun tersebut.');
-        setMode('login');
-      } else {
+      if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (error) throw error;
-
-        router.push('/dashboard');
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || 'Terjadi kesalahan.');
+        if (error) {
+          setErrorMsg(error.message);
+          return;
+        }
       } else {
-        setError('Terjadi kesalahan.');
+        // REGISTER
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (error) {
+          setErrorMsg(error.message);
+          return;
+        }
       }
+
+      // kalau sukses login / register → ke dashboard
+      router.replace('/dashboard');
     } finally {
       setLoading(false);
     }
   };
 
+  const toggleMode = () => {
+    setMode((prev) => (prev === 'login' ? 'register' : 'login'));
+    setErrorMsg(null);
+    setPassword('');
+    setConfirmPwd('');
+  };
+
+  const title =
+    mode === 'login'
+      ? 'Masuk ke Sales Pipeline'
+      : 'Daftar akun Sales Pipeline';
+
+  const subtitle =
+    mode === 'login'
+      ? 'Kelola dan laporkan pipeline dalam format yang disukai atasan.'
+      : 'Buat akun untuk mulai menyimpan dan mengelola data pipeline Anda.';
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-100 via-slate-100 to-slate-200 px-4">
-      <div className="w-full max-w-md">
-        {/* Logo / Brand */}
-        <div className="mb-6 text-center">
-          <div className="inline-flex items-center justify-center rounded-full bg-slate-900 text-white w-10 h-10 text-lg font-bold shadow-md">
-            SP
-          </div>
-          <h1 className="mt-3 text-xl font-semibold text-slate-900">
-            Sales Pipeline
-          </h1>
-          <p className="text-sm text-slate-500">
-            CRM ringan untuk sales asuransi – kelola pipeline & laporan dengan rapi.
-          </p>
-        </div>
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
+      <div className="max-w-4xl w-full grid md:grid-cols-[1.3fr,1fr] bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
+        {/* LEFT PANEL (brand / elevator pitch) */}
+        <div className="hidden md:flex flex-col justify-between bg-slate-900 text-slate-50 p-8">
+          <div>
+            <div className="inline-flex items-center gap-2 mb-4">
+              <div className="w-9 h-9 rounded-2xl bg-slate-50/10 border border-slate-700 flex items-center justify-center text-xs font-bold">
+                SP
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                  Sales Pipeline
+                </p>
+                <p className="text-sm font-semibold">Untuk Sales Asuransi</p>
+              </div>
+            </div>
 
-        {/* Card Auth */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 space-y-5">
-          {/* Toggle Login / Register */}
-          <div className="flex items-center justify-center space-x-2 text-sm">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('login');
-                setError(null);
-                setMessage(null);
-              }}
-              className={`px-4 py-1.5 rounded-full border text-sm transition ${
-                mode === 'login'
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('register');
-                setError(null);
-                setMessage(null);
-              }}
-              className={`px-4 py-1.5 rounded-full border text-sm transition ${
-                mode === 'register'
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              Register
-            </button>
-          </div>
-
-          <div className="text-center">
-            <h2 className="text-lg font-semibold text-slate-900">
-              {mode === 'login' ? 'Masuk ke akun Anda' : 'Buat akun baru'}
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Gunakan email kerja Anda. Satu akun untuk seluruh pipeline.
+            <h1 className="text-xl font-semibold mb-3">
+              Laporan pipeline rapi, sesuai format atasan.
+            </h1>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Input pipeline harian, filter per produk & kuadran, export ke
+              Excel, dan copy format WhatsApp dalam sekali klik. Dibuat khusus
+              untuk kebutuhan sales asuransi yang butuh laporan cepat dan
+              profesional.
             </p>
           </div>
 
-          {error && (
-            <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2">
-              {error}
+          <div className="mt-8 space-y-1 text-[11px] text-slate-400">
+            <p>• Multi-user ready (satu akun per sales)</p>
+            <p>• Format export mengikuti template laporan pipeline</p>
+            <p>• Data Anda aman di Supabase</p>
+          </div>
+        </div>
+
+        {/* RIGHT PANEL (form) */}
+        <div className="p-6 md:p-8 flex flex-col justify-center">
+          {/* Brand kecil untuk layar kecil */}
+          <div className="md:hidden mb-4 flex items-center gap-2">
+            <div className="w-8 h-8 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
+              SP
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                Sales Pipeline
+              </p>
+              <p className="text-xs text-slate-700">
+                Untuk sales asuransi
+              </p>
+            </div>
+          </div>
+
+          <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-1">
+            {title}
+          </h2>
+          <p className="text-[11px] text-slate-500 mb-4">{subtitle}</p>
+
+          {errorMsg && (
+            <div className="mb-3 text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {errorMsg}
             </div>
           )}
 
-          {message && (
-            <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2">
-              {message}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-700">
+          <form onSubmit={handleSubmit} className="space-y-3 text-xs">
+            <div>
+              <label className="block mb-1 font-medium text-slate-700">
                 Email
               </label>
               <input
                 type="email"
-                className="w-full border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-300 rounded-lg px-3 py-2 text-sm outline-none bg-slate-50/60"
-                placeholder="you@company.com"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 text-xs"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="nama@perusahaan.com"
                 autoComplete="email"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-700">
+            <div>
+              <label className="block mb-1 font-medium text-slate-700">
                 Password
               </label>
               <input
                 type="password"
-                className="w-full border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-300 rounded-lg px-3 py-2 text-sm outline-none bg-slate-50/60"
-                placeholder="Minimal 6 karakter"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 text-xs"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
+                placeholder="Minimal 6 karakter"
+                autoComplete={
+                  mode === 'login'
+                    ? 'current-password'
+                    : 'new-password'
+                }
               />
             </div>
+
+            {mode === 'register' && (
+              <div>
+                <label className="block mb-1 font-medium text-slate-700">
+                  Konfirmasi Password
+                </label>
+                <input
+                  type="password"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 text-xs"
+                  value={confirmPwd}
+                  onChange={(e) => setConfirmPwd(e.target.value)}
+                  placeholder="Ulangi password"
+                  autoComplete="new-password"
+                />
+              </div>
+            )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 py-2.5 rounded-lg text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition shadow-sm"
+              className="w-full mt-1 py-2.5 rounded-lg text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition shadow-sm"
             >
               {loading
                 ? mode === 'login'
-                  ? 'Sedang login...'
-                  : 'Sedang mendaftar...'
+                  ? 'Memproses...'
+                  : 'Membuat akun...'
                 : mode === 'login'
-                ? 'Login'
-                : 'Register'}
+                ? 'Masuk'
+                : 'Daftar'}
             </button>
           </form>
 
-          <p className="text-[11px] text-slate-400 text-center pt-1">
-            Dengan masuk, Anda menyetujui bahwa data pipeline akan disimpan dengan aman.
-          </p>
+          <div className="mt-4 text-[11px] text-slate-500 flex items-center justify-between">
+            <span>
+              {mode === 'login'
+                ? 'Belum punya akun?'
+                : 'Sudah punya akun?'}
+            </span>
+            <button
+              type="button"
+              onClick={toggleMode}
+              className="text-[11px] font-medium text-slate-900 hover:underline"
+            >
+              {mode === 'login' ? 'Daftar sekarang' : 'Masuk saja'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
