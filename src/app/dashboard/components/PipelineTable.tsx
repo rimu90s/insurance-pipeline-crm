@@ -723,24 +723,24 @@ const prettyLeadSource = (source?: string | null) => {
                     <td className="align-top px-3 py-2 text-xs">
                       {/* Baris 1: Remarks utama */}
                       <div className="text-slate-800">
-                        {row.remarks || '-'}
+                        {row.remarks ?? '-'}
                       </div>
 
                       {/* Baris 2: Next action */}
-                      {row.next_action && (
+                      {/* {row.next_action && ( */}
                         <div className="mt-1 text-[11px] text-slate-600">
                           <span className="font-medium text-slate-700">Next:</span>{' '}
-                          {row.next_action}
+                          {row.next_action ?? '-'}
                         </div>
-                      )}
+                      {/* )} */}
 
                       {/* Baris 3: Risk / Objection */}
-                      {row.risk_tag && (
+                      {/* {row.risk_tag && ( */}
                         <div className="mt-0.5 text-[11px] text-slate-600">
                           <span className="font-medium text-slate-700">Risk:</span>{' '}
-                          {row.risk_tag}
+                          {row.risk_tag ?? '-'}
                         </div>
-                      )}
+                      {/* )} */}
                     </td>
 
                     {/* ACTIONS (sticky di sisi kanan) */}
