@@ -1,135 +1,267 @@
 'use client';
 
-import React, { useState } from 'react';
+/**
+ * ============================================================
+ * PIPELINE TABLE COMPONENT (FULL + ANNOTATED)
+ * ============================================================
+ *
+ * Fungsi utama komponen ini:
+ * --------------------------------
+ * - Menampilkan daftar pipeline dalam bentuk tabel lengkap.
+ * - Semua informasi yang penting bagi atasan:
+ *   Produk, Nasabah, Marketer, Branch, Class, APE IDR/USD,
+ *   Plan (week), Quadrant, Prioritas, Remarks, Tanggal.
+ *
+ * - Memberikan fitur:
+ *   1) FILTER:
+ *      - Produk
+ *      - Plan (week 1–4)
+ *      - Quadrant (k1–k4)
+ *      - Marketer
+ *      - Prioritas (prioritas saja / non-prioritas)
+ *
+ *   2) SORT:
+ *      - Sort by Tanggal pipeline
+ *      - Sort by Produk
+ *      - Sort by Nama nasabah
+ *      - Sort by APE IDR
+ *
+ *   3) ACTION:
+ *      - Reset filter
+ *      - Reset sort
+ *      - Export Excel
+ *      - Copy WA (berdasarkan data yang sedang terfilter)
+ *
+ *   4) ACTION per baris:
+ *      - Detail (buka modal)
+ *      - Copy ringkas ke WhatsApp
+ *      - Edit cepat
+ *      - Hapus data
+ *
+ * Catatan:
+ * - Data filter dan logika filter utama dikendalikan di DashboardPage.
+ * - Komponen ini menerima "filteredPipelines" dari parent,
+ *   lalu melakukan SORT dan rendering tampilan.
+ *
+ * ============================================================
+ */
+
+import { useState, useCallback, useMemo } from 'react';
 import { PipelineRow } from '@/types/pipeline';
 import { buildWhatsAppLineShort } from '@/utils/whatsapp';
 
-type Product = { id: string; name: string };
-type Marketer = { id: string; name: string; branch: string | null };
+/**
+ * ============================================================
+ * TYPE DEFINITIONS UNTUK DATA & PROPS
+ * ============================================================
+ */
 
+// Tipe produk (minimal yang dibutuhkan di tabel)
+type Product = {
+  id: string;
+  name: string;
+};
+
+// Tipe marketer (minimal yang dibutuhkan di tabel)
+type Marketer = {
+  id: string;
+  name: string;
+  branch: string | null;
+};
+
+// Props yang datang dari DashboardPage
 type PipelineTableProps = {
+  // Data pipeline yang sudah difilter oleh parent (DashboardPage)
   filteredPipelines: PipelineRow[];
+
+  // Lookup data
+  products: Product[];
+  marketers: Marketer[];
+
+  // Flag loading, untuk menampilkan skeleton
+  loading: boolean;
+
+  /**
+   * --------------------------------
+   * STATE FILTER (dari parent)
+   * --------------------------------
+   * Komponen ini hanya "memanggil setter", tidak menyimpan filter sendiri,
+   * supaya semua sumber kebenaran filter ada di DashboardPage.
+   */
   filterProductId: string;
   setFilterProductId: (v: string) => void;
   filterPlan: string;
   setFilterPlan: (v: string) => void;
   filterQuadrant: string;
   setFilterQuadrant: (v: string) => void;
+  filterMarketerId: string;
+  setFilterMarketerId: (v: string) => void;
+  filterPriority: string; // 'all' | 'prio' | 'nonprio'
+  setFilterPriority: (v: string) => void;
 
-  products: Product[];
-  marketers: Marketer[];
-
+  // Aksi global dari parent
   exportExcel: () => void;
-
-  loading: boolean;
-
-  // Aksi dari tabel
   openDetailModal: (row: PipelineRow) => void;
   onEditRow: (row: PipelineRow) => void;
   onDeleteRow: (row: PipelineRow) => void;
   onCopyWARow: (row: PipelineRow) => void;
+
+  // Tombol reset filter (mengembalikan semua filter ke default)
+  onResetFilters: () => void;
 };
 
-type SortKey = 'product' | 'customer' | 'ape_idr' | 'plan' | 'quadrant' | null;
-
+/**
+ * ============================================================
+ * MAIN COMPONENT
+ * ============================================================
+ */
 export default function PipelineTable({
   filteredPipelines,
+  products,
+  marketers,
+  loading,
   filterProductId,
   setFilterProductId,
   filterPlan,
   setFilterPlan,
   filterQuadrant,
   setFilterQuadrant,
-  products,
-  marketers,
+  filterMarketerId,
+  setFilterMarketerId,
+  filterPriority,
+  setFilterPriority,
   exportExcel,
-  loading,
   openDetailModal,
   onEditRow,
   onDeleteRow,
   onCopyWARow,
+  onResetFilters,
 }: PipelineTableProps) {
-  const getProductName = (id: string) =>
-    products.find((p) => p.id === id)?.name ?? '-';
+  /**
+   * ============================================================
+   * A. STATE SORTING
+   * ============================================================
+   *
+   * sortBy:
+   *  - 'date'     → berdasarkan tanggal pipeline
+   *  - 'product'  → berdasarkan nama produk
+   *  - 'customer' → berdasarkan nama nasabah
+   *  - 'apeIdr'   → berdasarkan nominal APE IDR
+   *
+   * sortDirection:
+   *  - 'asc'  → ascending (kecil → besar)
+   *  - 'desc' → descending (besar → kecil)
+   */
+  const [sortBy, setSortBy] = useState<'date' | 'product' | 'customer' | 'apeIdr'>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  const getMarketerName = (id: string | null) =>
-    id ? marketers.find((m) => m.id === id)?.name ?? '-' : '-';
+  /**
+   * ============================================================
+   * B. HELPER MINI (LOOKUP PRODUK & MARKETER)
+   * ============================================================
+   */
 
-  const getBranchClass = (row: PipelineRow) => {
-    const parts = [
-      row.branch ? row.branch : null,
-      row.class ? `Class ${row.class}` : null,
-    ].filter(Boolean);
-    return parts.join(' • ') || '-';
+  // Ambil nama produk dari product_id
+  const getProductName = useCallback(
+    (id: string) => {
+      const p = products.find((x) => x.id === id);
+      return p ? p.name : '-';
+    },
+    [products] // tergantung pada array products
+  );
+
+
+  // Ambil nama marketer dari marketer_id
+  const getMarketerName = (id: string | null) => {
+    if (!id) return '-';
+    const m = marketers.find((x) => x.id === id);
+    return m ? m.name : '-';
   };
 
-  //
-  // SORTING STATE
-  //
-  const [sortBy, setSortBy] = useState<SortKey>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  // Ambil branch marketer (kalau ada)
+  const getMarketerBranch = (id: string | null) => {
+    if (!id) return '-';
+    const m = marketers.find((x) => x.id === id);
+    return m?.branch ?? '-';
+  };
 
-  const handleSort = (key: SortKey) => {
-    if (sortBy === key) {
-      // toggle asc <-> desc
-      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+  /**
+   * ============================================================
+   * C. SORT HANDLER
+   * ============================================================
+   * - handleSort: dipanggil ketika header kolom di-klik.
+   * - renderSortIcon: menampilkan icon ⇅ / ↑ / ↓ di header.
+   */
+
+  const handleSort = (field: 'date' | 'product' | 'customer' | 'apeIdr') => {
+    // Jika klik kolom yang sama → toggle naik/turun
+    if (sortBy === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
-      setSortBy(key);
-      setSortDir('asc');
+      // Jika klik kolom baru → set field baru, default asc
+      setSortBy(field);
+      setSortDirection('asc');
     }
   };
 
-  const renderSortIcon = (key: SortKey) => {
-    if (sortBy !== key) return null;
-    return (
-      <span className="text-[9px] text-slate-500">
-        {sortDir === 'asc' ? '▲' : '▼'}
-      </span>
+  const renderSortIcon = (field: 'date' | 'product' | 'customer' | 'apeIdr') => {
+    if (sortBy !== field) return <span className="opacity-30 text-[10px]">⇅</span>;
+    return sortDirection === 'asc' ? (
+      <span className="text-[10px]">↑</span>
+    ) : (
+      <span className="text-[10px]">↓</span>
     );
   };
 
-  //
-  // APPLY SORTING ke data yang sudah difilter
-  //
-  const sortedPipelines = (() => {
+  /**
+   * ============================================================
+   * D. SORTED PIPELINES
+   * ============================================================
+   *
+   * - Data yang disort adalah "filteredPipelines" dari parent.
+   * - Diurutkan berdasarkan state sortBy & sortDirection.
+   * - useMemo dipakai agar tidak menghitung ulang terus menerus
+   *   ketika tidak ada perubahan yang relevan.
+   */
+  const sortedPipelines = useMemo(() => {
     const rows = [...filteredPipelines];
 
-    if (!sortBy) return rows;
+    rows.sort((a, b) => {
+      let cmp = 0;
 
-    return rows.sort((a, b) => {
-      let va: string | number = '';
-      let vb: string | number = '';
-
-      switch (sortBy) {
-        case 'product':
-          va = getProductName(a.product_id).toLowerCase();
-          vb = getProductName(b.product_id).toLowerCase();
-          break;
-        case 'customer':
-          va = (a.customer_name ?? '').toLowerCase();
-          vb = (b.customer_name ?? '').toLowerCase();
-          break;
-        case 'ape_idr':
-          va = a.ape_idr ?? 0;
-          vb = b.ape_idr ?? 0;
-          break;
-        case 'plan':
-          va = (a.execution_plan ?? '').toLowerCase();
-          vb = (b.execution_plan ?? '').toLowerCase();
-          break;
-        case 'quadrant':
-          va = (a.quadrant ?? '').toLowerCase();
-          vb = (b.quadrant ?? '').toLowerCase();
-          break;
-        default:
-          return 0;
+      if (sortBy === 'date') {
+        // Jika pipeline_date null, treat sebagai string kosong
+        const da = a.pipeline_date ?? '';
+        const db = b.pipeline_date ?? '';
+        cmp = da.localeCompare(db);
+      } else if (sortBy === 'product') {
+        const pa = getProductName(a.product_id);
+        const pb = getProductName(b.product_id);
+        cmp = pa.localeCompare(pb);
+      } else if (sortBy === 'customer') {
+        cmp = a.customer_name.localeCompare(b.customer_name);
+      } else if (sortBy === 'apeIdr') {
+        const va = a.ape_idr ?? 0;
+        const vb = b.ape_idr ?? 0;
+        cmp = va - vb;
       }
 
-      if (va < vb) return sortDir === 'asc' ? -1 : 1;
-      if (va > vb) return sortDir === 'asc' ? 1 : -1;
-      return 0;
+      // Aplikasikan direction (asc / desc)
+      return sortDirection === 'asc' ? cmp : -cmp;
     });
-  })();
+
+    return rows;
+  }, [filteredPipelines, sortBy, sortDirection, getProductName]);
+
+  /**
+   * ============================================================
+   * E. COPY WA (SEMUA DATA TERFILTER)
+   * ============================================================
+   *
+   * - Dipanggil ketika user klik tombol "Copy WA (filter)" di toolbar.
+   * - Menggabungkan semua baris (sortedPipelines) menjadi 1 pesan WhatsApp,
+   *   dengan format ringkas per baris (via buildWhatsAppLineShort).
+   */
 
   const handleCopyAllWA = () => {
     if (sortedPipelines.length === 0) {
@@ -144,26 +276,85 @@ export default function PipelineTable({
       return `${index + 1}. ${line}`;
     });
 
-    const header = `🔥 PIPELINE REPORT (terfilter)\nTotal: ${
-      sortedPipelines.length
-    } data\n`;
+    const header = `🔥 PIPELINE REPORT (Terfilter)\nTotal: ${sortedPipelines.length} data\n`;
     const message = header + '\n' + lines.join('\n');
 
     navigator.clipboard.writeText(message);
     alert('Rekap pipeline (sesuai filter) sudah disalin. Tinggal paste di WhatsApp.');
   };
 
+  /**
+   * ============================================================
+   * F. RESET SORT
+   * ============================================================
+   *
+   * - Mengembalikan urutan sort ke default:
+   *   - sortBy: 'date'
+   *   - sortDirection: 'desc'
+   *
+   * Artinya: secara default data diurutkan dari tanggal terbaru.
+   */
+
+  const handleResetSort = () => {
+    setSortBy('date');
+    setSortDirection('desc');
+  };
+
+  /**
+   * ============================================================
+   * G. FORMATTER UNTUK NOMINAL
+   * ============================================================
+   */
+
+  const formatIdr = (value: number | null) =>
+    value != null ? 'Rp ' + value.toLocaleString('id-ID') : '-';
+
+  const formatUsd = (value: number | null) =>
+    value != null ? '$' + value.toLocaleString('en-US') : '-';
+
+  /**
+   * ============================================================
+   * H. LOADING STATE
+   * ============================================================
+   * Menampilkan skeleton placeholder ketika data masih dimuat.
+   */
+
+  if (loading) {
+    return (
+      <section className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 w-40 bg-slate-100 rounded" />
+          <div className="h-8 w-full bg-slate-100 rounded" />
+          <div className="h-32 w-full bg-slate-100 rounded" />
+        </div>
+      </section>
+    );
+  }
+
+  /**
+   * ============================================================
+   * I. MAIN RENDER: TOOLBAR + TABLE
+   * ============================================================
+   */
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-      {/* Toolbar atas: filter + export */}
+    <section className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+      {/* ======================================================
+          1. TOOLBAR: FILTER + ACTION BUTTONS
+         ====================================================== */}
       <div className="flex flex-col gap-2 mb-3 md:flex-row md:items-center md:justify-between">
-        {/* Kiri: filter */}
+        {/* -----------------------------
+            BAGIAN KIRI: CLUSTER FILTER
+           ----------------------------- */}
         <div className="flex flex-wrap gap-2">
-          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-2 py-1">
+          <div className="inline-flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-2 py-1">
+            {/* Label kecil "Filter" */}
             <span className="text-[11px] text-slate-500 flex items-center gap-1">
               <span>🔍</span>
               <span>Filter</span>
             </span>
+
+            {/* Filter Produk */}
             <select
               className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
               value={filterProductId}
@@ -179,7 +370,7 @@ export default function PipelineTable({
 
             <span className="h-3 w-px bg-slate-200" />
 
-            {/* Filter plan */}
+            {/* Filter Plan (week 1–4) */}
             <select
               className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
               value={filterPlan}
@@ -194,6 +385,7 @@ export default function PipelineTable({
 
             <span className="h-3 w-px bg-slate-200" />
 
+            {/* Filter Quadrant (k1–k4) */}
             <select
               className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
               value={filterQuadrant}
@@ -205,275 +397,303 @@ export default function PipelineTable({
               <option value="k3">k3</option>
               <option value="k4">k4</option>
             </select>
+
+            <span className="h-3 w-px bg-slate-200" />
+
+            {/* Filter Marketer */}
+            <select
+              className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
+              value={filterMarketerId}
+              onChange={(e) => setFilterMarketerId(e.target.value)}
+            >
+              <option value="all">Semua marketer</option>
+              {marketers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+
+            <span className="h-3 w-px bg-slate-200" />
+
+            {/* Filter Prioritas */}
+            <select
+              className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+            >
+              <option value="all">Semua prioritas</option>
+              <option value="prio">Prioritas saja</option>
+              <option value="nonprio">Non-prioritas</option>
+            </select>
           </div>
         </div>
 
-        {/* Kanan: Export & Copy WA */}
-        <div className="flex items-center gap-2">
+        {/* -----------------------------
+            BAGIAN KANAN: BUTTON ACTION
+           ----------------------------- */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Reset filter: kembalikan semua filter ke default */}
           <button
+            type="button"
+            onClick={onResetFilters}
+            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-50"
+          >
+            ⟳ Reset filter
+          </button>
+
+          {/* Reset sort: kembalikan sortBy & sortDirection */}
+          <button
+            type="button"
+            onClick={handleResetSort}
+            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-50"
+          >
+            ⇅ Reset sort
+          </button>
+
+          {/* Export Excel */}
+          <button
+            type="button"
             onClick={exportExcel}
             className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-800 hover:bg-slate-50"
           >
-            <span>⬇️</span>
-            <span>Export Excel</span>
+            ⬇️ Export Excel
           </button>
+
+          {/* Copy WA semua data terfilter */}
           <button
+            type="button"
             onClick={handleCopyAllWA}
             className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-slate-800"
           >
-            <span>📲</span>
-            <span>Copy WA (filter)</span>
+            📲 Copy WA (filter)
           </button>
         </div>
       </div>
 
-      {/* TABLE WRAPPER */}
-      <div className="mt-1 border border-slate-100 rounded-xl overflow-hidden">
-        <div className="relative overflow-x-auto">
-          <table className="w-full min-w-[900px] border-collapse text-[11px] table-auto">
-            <thead className="bg-slate-50">
-              <tr className="text-left text-slate-600">
-                {/* PRODUCT (sortable) */}
-                <th className="px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('product')}
-                    className="inline-flex items-center gap-1 hover:text-slate-900"
-                  >
+      {/* ======================================================
+          2. TABLE WRAPPER (OVERFLOW-X UNTUK KOLOM BANYAK)
+         ====================================================== */}
+      <div className="relative">
+        <div className="overflow-x-auto">
+          {/* 
+            min-w-[1200px] memastikan tabel melebar sehingga
+            tidak terlalu "ngepres" jika kolom banyak.
+           */}
+          <table className="min-w-[1200px] w-full text-[11px] text-left">
+            {/* ------------------------------------------
+                HEADER TABLE
+               ------------------------------------------ */}
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-2 py-2 text-slate-500">No</th>
+
+                {/* Kolom Produk dengan sorting */}
+                <th
+                  className="px-2 py-2 text-slate-500 cursor-pointer"
+                  onClick={() => handleSort('product')}
+                >
+                  <div className="flex items-center gap-1">
                     <span>Produk</span>
                     {renderSortIcon('product')}
-                  </button>
+                  </div>
                 </th>
 
-                {/* CUSTOMER (sortable) */}
-                <th className="px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('customer')}
-                    className="inline-flex items-center gap-1 hover:text-slate-900"
-                  >
+                {/* Kolom Nasabah dengan sorting */}
+                <th
+                  className="px-2 py-2 text-slate-500 cursor-pointer"
+                  onClick={() => handleSort('customer')}
+                >
+                  <div className="flex items-center gap-1">
                     <span>Nasabah</span>
                     {renderSortIcon('customer')}
-                  </button>
+                  </div>
                 </th>
 
-                {/* MARKETER info (tidak disort dulu) */}
-                <th className="px-3 py-2">
+                {/* Kolom Marketer / Branch / Class */}
+                <th className="px-2 py-2 text-slate-500">
                   Marketer / Branch / Class
                 </th>
 
-                {/* APE (sortable by IDR) */}
-                <th className="px-3 py-2 text-right whitespace-nowrap">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('ape_idr')}
-                    className="inline-flex items-center gap-1 hover:text-slate-900"
-                  >
-                    <span>APE (IDR / USD)</span>
-                    {renderSortIcon('ape_idr')}
-                  </button>
+                {/* Kolom APE IDR / USD dengan sorting */}
+                <th
+                  className="px-2 py-2 text-slate-500 cursor-pointer"
+                  onClick={() => handleSort('apeIdr')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>APE IDR / USD</span>
+                    {renderSortIcon('apeIdr')}
+                  </div>
                 </th>
 
-                {/* PLAN (sortable) */}
-                <th className="px-3 py-2 whitespace-nowrap">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('plan')}
-                    className="inline-flex items-center gap-1 hover:text-slate-900"
-                  >
-                    <span>Plan / Tanggal</span>
-                    {renderSortIcon('plan')}
-                  </button>
+                {/* Kolom Plan / Quadrant / Tanggal */}
+                <th className="px-2 py-2 text-slate-500">
+                  Plan / Quadrant
                 </th>
 
-                {/* QUADRANT (sortable) */}
-                <th className="px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('quadrant')}
-                    className="inline-flex items-center gap-1 hover:text-slate-900"
-                  >
-                    <span>Kdr</span>
-                    {renderSortIcon('quadrant')}
-                  </button>
-                </th>
+                {/* Kolom Prioritas */}
+                <th className="px-2 py-2 text-slate-500">Prioritas</th>
 
-                {/* ACTION – sticky kanan, tidak di-sort */}
-                <th className="px-3 py-2 text-center sticky right-0 bg-slate-50 z-10">
+                {/* Kolom Remarks (keterangan) */}
+                <th className="px-2 py-2 text-slate-500">Remarks</th>
+
+                {/* Kolom Action sticky di kanan */}
+                <th className="px-2 py-2 text-slate-500 sticky right-0 bg-slate-50">
                   Action
                 </th>
               </tr>
             </thead>
 
+            {/* ------------------------------------------
+                BODY TABLE
+               ------------------------------------------ */}
             <tbody>
-              {/* LOADING STATE */}
-              {loading && (
-                <tr>
-                  <td colSpan={7} className="px-3 py-4">
-                    <div className="flex flex-col gap-2 animate-pulse">
-                      <div className="h-3 w-40 bg-slate-100 rounded" />
-                      <div className="h-3 w-64 bg-slate-100 rounded" />
-                      <div className="h-3 w-52 bg-slate-100 rounded" />
-                    </div>
-                  </td>
-                </tr>
-              )}
-
-              {/* DATA STATE */}
-              {!loading &&
-                sortedPipelines.map((row) => {
-                  const isPrio = !!row.priority_flag;
-
-                  return (
-                    <tr
-                      key={row.id}
-                      className={`border-t border-slate-100 transition-colors ${
-                        isPrio
-                          ? 'bg-yellow-50 hover:bg-yellow-100'
-                          : 'bg-white hover:bg-slate-50/80'
-                      }`}
-                    >
-                      {/* Produk */}
-                      <td className="px-3 py-2 align-top whitespace-nowrap">
-                        <span className="font-medium text-slate-900">
-                          {getProductName(row.product_id)}
-                        </span>
-                      </td>
-
-                      {/* Nasabah + Remarks + badge PRIO */}
-                      <td className="px-3 py-2 align-top">
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-1">
-                            {isPrio && (
-                              <span className="inline-flex items-center rounded-full bg-amber-500/90 text-[9px] font-semibold text-white px-1.5 py-px">
-                                PRIO
-                              </span>
-                            )}
-                            <span className="font-medium text-slate-900">
-                              {row.customer_name}
-                            </span>
-                          </div>
-
-                          {row.remarks && (
-                            <span className="text-[10px] text-slate-500 line-clamp-2">
-                              {row.remarks}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Marketer + Branch + Class */}
-                      <td className="px-3 py-2 align-top">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-slate-800">
-                            {getMarketerName(row.marketer_id)}
-                          </span>
-                          <span className="text-[10px] text-slate-500">
-                            {getBranchClass(row)}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* APE IDR + USD */}
-                      <td className="px-3 py-2 text-right align-top whitespace-nowrap">
-                        <div className="tabular-nums text-slate-900">
-                          {row.ape_idr
-                            ? 'Rp ' +
-                              row.ape_idr.toLocaleString('id-ID')
-                            : '-'}
-                        </div>
-                        <div className="text-[10px] text-slate-500 tabular-nums">
-                          {row.ape_usd
-                            ? '$ ' +
-                              row.ape_usd.toLocaleString('en-US')
-                            : ''}
-                        </div>
-                      </td>
-
-                      {/* Plan + Tanggal */}
-                      <td className="px-3 py-2 align-top whitespace-nowrap">
-                        <span className="inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-700 bg-slate-50">
-                          {row.execution_plan ?? '-'}
-                        </span>
-                        <div className="text-[10px] text-slate-500 mt-1">
-                          {row.pipeline_date ?? ''}
-                        </div>
-                      </td>
-
-                      {/* Quadrant */}
-                      <td className="px-3 py-2 align-top uppercase whitespace-nowrap">
-                        <span className="inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-800 bg-white">
-                          {row.quadrant ?? '-'}
-                        </span>
-                      </td>
-
-                      {/* ACTION ICONS – sticky di kanan */}
-                      <td
-                        className={`px-3 py-2 text-center align-top sticky right-0 z-10 border-l border-slate-100 ${
-                          isPrio ? 'bg-yellow-50' : 'bg-white'
-                        }`}
-                      >
-                        <div className="inline-flex items-center gap-1">
-                          {/* Detail */}
-                          <button
-                            onClick={() => openDetailModal(row)}
-                            className="px-1.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100"
-                            title="Lihat detail"
-                          >
-                            <span className="text-[11px]">🔍</span>
-                          </button>
-
-                          {/* Edit */}
-                          <button
-                            onClick={() => onEditRow(row)}
-                            className="px-1.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100"
-                            title="Edit"
-                          >
-                            <span className="text-[11px]">✏️</span>
-                          </button>
-
-                          {/* Copy WA */}
-                          <button
-                            onClick={() => onCopyWARow(row)}
-                            className="px-1.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100"
-                            title="Copy ke WhatsApp"
-                          >
-                            <span className="text-[11px]">📋</span>
-                          </button>
-
-                          {/* Delete */}
-                          <button
-                            onClick={() => onDeleteRow(row)}
-                            className="px-1.5 py-1 rounded-md border border-red-200 bg-white hover:bg-red-50"
-                            title="Hapus"
-                          >
-                            <span className="text-[11px] text-red-600">
-                              🗑️
-                            </span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-
-              {/* EMPTY STATE */}
-              {!loading && sortedPipelines.length === 0 && (
+              {/* Jika tidak ada data setelah filter */}
+              {sortedPipelines.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
-                    className="text-center text-[11px] text-slate-500 py-6"
+                    colSpan={9}
+                    className="px-2 py-4 text-center text-[11px] text-slate-500"
                   >
-                    Belum ada data pipeline. Klik{' '}
-                      <span className="font-semibold">Tambah pipeline</span> untuk
-                      mulai mengisi.
+                    Tidak ada data pipeline untuk kombinasi filter ini.
                   </td>
                 </tr>
+              ) : (
+                sortedPipelines.map((row, index) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-slate-100 hover:bg-slate-50/60"
+                  >
+                    {/* Nomor urut */}
+                    <td className="px-2 py-2 align-top text-slate-500">
+                      {index + 1}
+                    </td>
+
+                    {/* Produk */}
+                    <td className="px-2 py-2 align-top text-slate-800">
+                      {getProductName(row.product_id)}
+                    </td>
+
+                    {/* Nasabah + tanggal pipeline kecil di bawah */}
+                    <td className="px-2 py-2 align-top">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-slate-900">
+                          {row.customer_name}
+                        </span>
+                        {row.pipeline_date && (
+                          <span className="text-[10px] text-slate-500">
+                            Pipeline: {row.pipeline_date}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Marketer / Branch / Class */}
+                    <td className="px-2 py-2 align-top">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-slate-900">
+                          {getMarketerName(row.marketer_id)}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {getMarketerBranch(row.marketer_id)}
+                        </span>
+                        {row.class && (
+                          <span className="inline-flex w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700">
+                            Class {row.class}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* APE IDR / USD */}
+                    <td className="px-2 py-2 align-top">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-slate-900">
+                          {formatIdr(row.ape_idr)}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {formatUsd(row.ape_usd)}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Plan / Quadrant */}
+                    <td className="px-2 py-2 align-top">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="inline-flex w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700">
+                          {row.execution_plan ?? '-'}
+                        </span>
+                        <span className="inline-flex w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700">
+                          {row.quadrant ?? '-'}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Prioritas */}
+                    <td className="px-2 py-2 align-top">
+                      {row.priority_flag ? (
+                        <span className="inline-flex w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                          PRIORITAS
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">-</span>
+                      )}
+                    </td>
+
+                    {/* Remarks / Keterangan */}
+                    <td className="px-2 py-2 align-top max-w-[260px]">
+                      <span className="block text-[11px] text-slate-700 line-clamp-3">
+                        {row.remarks ?? '-'}
+                      </span>
+                    </td>
+
+                    {/* ACTIONS (sticky di sisi kanan) */}
+                    <td className="px-2 py-2 align-top sticky right-0 bg-white">
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openDetailModal(row)}
+                          className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] hover:bg-slate-50"
+                          title="Lihat detail"
+                        >
+                          🔍 Detail
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onCopyWARow(row)}
+                          className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] hover:bg-slate-50"
+                          title="Copy ringkas WA"
+                        >
+                          📋 Copy
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onEditRow(row)}
+                          className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] hover:bg-slate-50"
+                          title="Edit cepat"
+                        >
+                          ✏️ Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onDeleteRow(row)}
+                          className="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-2 py-1 text-[10px] text-red-700 hover:bg-red-50"
+                          title="Hapus"
+                        >
+                          🗑️ Hapus
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -82,23 +82,34 @@ export default function DashboardPage() {
   const [filterProductId, setFilterProductId] = useState<string>('all');
   const [filterQuadrant, setFilterQuadrant] = useState<string>('all');
   const [filterPlan, setFilterPlan] = useState<string>('all');
+  const [filterMarketerId, setFilterMarketerId] = useState<string>('all');
+  const [filterPriority, setFilterPriority] = useState<string>('all'); // all | prio | nonprio
+
 
     // LOAD FILTER from localStorage (sekali saat awal)
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('sales-pipeline-filters-v1');
+      const raw = localStorage.getItem(FILTER_KEY);
       if (!raw) return;
 
-      const saved = JSON.parse(raw);
+      const saved = JSON.parse(raw) as {
+        productId?: string;
+        plan?: string;
+        quadrant?: string;
+        marketerId?: string;
+        priority?: string;
+      };
 
       if (saved.productId) setFilterProductId(saved.productId);
       if (saved.plan) setFilterPlan(saved.plan);
       if (saved.quadrant) setFilterQuadrant(saved.quadrant);
-
+      if (saved.marketerId) setFilterMarketerId(saved.marketerId);
+      if (saved.priority) setFilterPriority(saved.priority);
     } catch (e) {
       console.error('Failed to load filters', e);
     }
   }, []);
+
 
 
     // simpan filter ke localStorage setiap kali berubah
@@ -107,15 +118,18 @@ export default function DashboardPage() {
       productId: filterProductId,
       plan: filterPlan,
       quadrant: filterQuadrant,
+      marketerId: filterMarketerId,
+      priority: filterPriority,
     };
 
     try {
       localStorage.setItem(FILTER_KEY, JSON.stringify(payload));
     } catch (e) {
-      // kalau private mode / error storage, biarkan saja
       console.error('Failed to save filters', e);
     }
-  }, [filterProductId, filterPlan, filterQuadrant]);
+  }, [filterProductId, filterPlan, filterQuadrant, filterMarketerId, filterPriority]);
+
+
 
   //
   // 5. STATE: Form create pipeline (dipass ke PipelineForm)
@@ -369,17 +383,28 @@ useEffect(() => {
     const matchPlan =
       filterPlan === 'all'
         ? true
-        : (row.execution_plan ?? '').toLowerCase() ===
-          filterPlan.toLowerCase();
+        : (row.execution_plan ?? '').toLowerCase() === filterPlan.toLowerCase();
 
     const matchQuadrant =
       filterQuadrant === 'all'
         ? true
-        : (row.quadrant ?? '').toLowerCase() ===
-          filterQuadrant.toLowerCase();
+        : (row.quadrant ?? '').toLowerCase() === filterQuadrant.toLowerCase();
 
-    return matchProduct && matchPlan && matchQuadrant;
+    const matchMarketer =
+      filterMarketerId === 'all'
+        ? true
+        : row.marketer_id === filterMarketerId;
+
+    const matchPriority =
+      filterPriority === 'all'
+        ? true
+        : filterPriority === 'prio'
+        ? !!row.priority_flag
+        : !row.priority_flag;
+
+    return matchProduct && matchPlan && matchQuadrant && matchMarketer && matchPriority;
   });
+
 
   const totalApeIdr = filteredPipelines.reduce(
     (acc, row) => acc + (row.ape_idr ?? 0),
@@ -440,6 +465,18 @@ useEffect(() => {
     resetForm();           // pastikan form bersih tiap kali buka modal
     setShowCreateModal(true);
   };
+
+  // ──────────────────────────────────────────────────────────
+  //  HANDLER: Reset Filter
+  // ──────────────────────────────────────────────────────────
+  const resetFilters = () => {
+    setFilterProductId('all');
+    setFilterPlan('all');
+    setFilterQuadrant('all');
+    setFilterMarketerId('all');
+    setFilterPriority('all');
+  };
+
 
   const closeCreateModal = () => {
     setShowCreateModal(false);
@@ -781,21 +818,29 @@ useEffect(() => {
           {/* List pipeline + filter + export */}
           <PipelineTable
             filteredPipelines={filteredPipelines}
+            products={products}
+            marketers={marketers}
+            loading={false} // atau loadingData kalau kamu punya state itu
+
             filterProductId={filterProductId}
             setFilterProductId={setFilterProductId}
             filterPlan={filterPlan}
             setFilterPlan={setFilterPlan}
             filterQuadrant={filterQuadrant}
             setFilterQuadrant={setFilterQuadrant}
-            products={products}
-            marketers={marketers}
+            filterMarketerId={filterMarketerId}
+            setFilterMarketerId={setFilterMarketerId}
+            filterPriority={filterPriority}
+            setFilterPriority={setFilterPriority}
+
             exportExcel={exportExcel}
-            loading={loadingData}
             openDetailModal={openDetailModal}
             onEditRow={handleEditFromTable}
             onDeleteRow={handleDeleteFromTable}
             onCopyWARow={copyShortFromTable}
+            onResetFilters={resetFilters}
           />
+
         </section>
       </main>
 
