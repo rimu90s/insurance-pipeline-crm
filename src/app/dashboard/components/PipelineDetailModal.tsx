@@ -129,6 +129,47 @@ export default function PipelineDetailModal({
               <br />
               {pipeline.pipeline_date ?? '-'}
             </div>
+            {/* ===== INFO STATUS & LEAD SOURCE ===== */}
+            <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
+              <div>
+                <p className="text-slate-500">Status</p>
+                <p className="font-medium text-slate-900">
+                  {pipeline?.status ?? 'prospecting'}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">Lead source</p>
+                <p className="font-medium text-slate-900">
+                  {pipeline?.lead_source ?? '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">Expected closing</p>
+                <p className="font-medium text-slate-900">
+                  {pipeline?.expected_closing_date ?? '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">Last contact</p>
+                <p className="font-medium text-slate-900">
+                  {pipeline?.last_contact_date ?? '-'}
+                </p>
+              </div>
+            </div>
+
+            {/* ===== NEXT ACTION & RISK TAG ===== */}
+            <div className="mt-3 text-xs">
+              <p className="text-slate-500">Next action</p>
+              <p className="font-medium text-slate-900">
+                {pipeline?.next_action ?? '-'}
+              </p>
+            </div>
+            <div className="mt-2 text-xs">
+              <p className="text-slate-500">Risk / Objection</p>
+              <p className="font-medium text-slate-900">
+                {pipeline?.risk_tag ?? '-'}
+              </p>
+            </div>
             <div>
               <span className="font-medium">Prioritas:</span>
               <br />
@@ -138,6 +179,7 @@ export default function PipelineDetailModal({
         )}
 
         {/* MODE EDIT */}
+                {/* MODE EDIT */}
         {editMode && editForm && (
           <div className="space-y-2 text-xs text-slate-700 max-h-[60vh] overflow-y-auto pr-1">
             <div>
@@ -149,9 +191,7 @@ export default function PipelineDetailModal({
                 value={editForm.product_id}
                 onChange={(e) =>
                   setEditForm((prev) =>
-                    prev
-                      ? { ...prev, product_id: e.target.value }
-                      : prev
+                    prev ? { ...prev, product_id: e.target.value } : prev
                   )
                 }
               >
@@ -174,9 +214,7 @@ export default function PipelineDetailModal({
                 value={editForm.customer_name}
                 onChange={(e) =>
                   setEditForm((prev) =>
-                    prev
-                      ? { ...prev, customer_name: e.target.value }
-                      : prev
+                    prev ? { ...prev, customer_name: e.target.value } : prev
                   )
                 }
               />
@@ -191,9 +229,7 @@ export default function PipelineDetailModal({
                 value={editForm.marketer_id}
                 onChange={(e) =>
                   setEditForm((prev) =>
-                    prev
-                      ? { ...prev, marketer_id: e.target.value }
-                      : prev
+                    prev ? { ...prev, marketer_id: e.target.value } : prev
                   )
                 }
               >
@@ -282,9 +318,7 @@ export default function PipelineDetailModal({
                   value={editForm.execution_plan}
                   onChange={(e) =>
                     setEditForm((prev) =>
-                      prev
-                        ? { ...prev, execution_plan: e.target.value }
-                        : prev
+                      prev ? { ...prev, execution_plan: e.target.value } : prev
                     )
                   }
                 >
@@ -315,6 +349,125 @@ export default function PipelineDetailModal({
               </div>
             </div>
 
+            {/* STATUS & LEAD SOURCE */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block mb-1 font-medium text-slate-700">
+                  Status
+                </label>
+                <select
+                  className="w-full border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                  value={editForm.status}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev ? { ...prev, status: e.target.value } : prev
+                    )
+                  }
+                >
+                  <option value="prospecting">prospecting</option>
+                  <option value="presentation">presentation</option>
+                  <option value="proposal">proposal</option>
+                  <option value="negotiation">negotiation</option>
+                  <option value="closing">closing</option>
+                  <option value="lost">lost</option>
+                </select>
+              </div>
+              <div>
+                <label className="block mb-1 font-medium text-slate-700">
+                  Lead source
+                </label>
+                <select
+                  className="w-full border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                  value={editForm.lead_source}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev ? { ...prev, lead_source: e.target.value } : prev
+                    )
+                  }
+                >
+                  <option value="referral">referral</option>
+                  <option value="branch">branch staff</option>
+                  <option value="walk-in">walk-in</option>
+                  <option value="event">event</option>
+                  <option value="digital">digital</option>
+                </select>
+              </div>
+            </div>
+
+            {/* EXPECTED CLOSING & LAST CONTACT */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block mb-1 font-medium text-slate-700">
+                  Expected closing date
+                </label>
+                <input
+                  type="date"
+                  className="w-full border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                  value={editForm.expected_closing_date}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            expected_closing_date: e.target.value,
+                          }
+                        : prev
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <label className="block mb-1 font-medium text-slate-700">
+                  Last contact date
+                </label>
+                <input
+                  type="date"
+                  className="w-full border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                  value={editForm.last_contact_date}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev
+                        ? { ...prev, last_contact_date: e.target.value }
+                        : prev
+                    )
+                  }
+                />
+              </div>
+            </div>
+
+            {/* NEXT ACTION */}
+            <div>
+              <label className="block mb-1 font-medium text-slate-700">
+                Next action
+              </label>
+              <textarea
+                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300 min-h-12"
+                value={editForm.next_action}
+                onChange={(e) =>
+                  setEditForm((prev) =>
+                    prev ? { ...prev, next_action: e.target.value } : prev
+                  )
+                }
+              />
+            </div>
+
+            {/* RISK TAG */}
+            <div>
+              <label className="block mb-1 font-medium text-slate-700">
+                Risk / Objection tag
+              </label>
+              <input
+                type="text"
+                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                value={editForm.risk_tag}
+                onChange={(e) =>
+                  setEditForm((prev) =>
+                    prev ? { ...prev, risk_tag: e.target.value } : prev
+                  )
+                }
+              />
+            </div>
+
             <div>
               <label className="block mb-1 font-medium text-slate-700">
                 Tanggal Pipeline
@@ -325,9 +478,7 @@ export default function PipelineDetailModal({
                 value={editForm.pipeline_date}
                 onChange={(e) =>
                   setEditForm((prev) =>
-                    prev
-                      ? { ...prev, pipeline_date: e.target.value }
-                      : prev
+                    prev ? { ...prev, pipeline_date: e.target.value } : prev
                   )
                 }
               />
@@ -371,6 +522,7 @@ export default function PipelineDetailModal({
             </div>
           </div>
         )}
+
 
         {/* BUTTONS */}
         <div className="flex items-center justify-between mt-5 text-xs">

@@ -12,6 +12,12 @@ export type PipelineRow = {
   pipeline_date: string | null;
   product_id: string;
   marketer_id: string;
+  status: string | null;                 // prospecting / presentation / proposal / negotiation / closing / lost
+  lead_source: string | null;            // referral / walk-in / branch / event / digital / etc.
+  expected_closing_date: string | null;  // YYYY-MM-DD
+  last_contact_date: string | null;      // YYYY-MM-DD
+  next_action: string | null;            // rencana follow up
+  risk_tag: string | null;               // isu utama
 };
 
 export type PipelineEditForm = {
@@ -27,4 +33,10 @@ export type PipelineEditForm = {
   remarks: string;
   priority_flag: boolean;
   pipeline_date: string;
+  status: string;
+  lead_source: string;
+  expected_closing_date: string;
+  last_contact_date: string;
+  next_action: string;
+  risk_tag: string;
 };

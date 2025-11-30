@@ -55,6 +55,24 @@ type PipelineFormProps = {
   priorityFlag: boolean;
   setPriorityFlag: (value: boolean) => void;
 
+  status: string;
+  setStatus: (v: string) => void;
+  
+  leadSource: string;
+  setLeadSource: (v: string) => void;
+  
+  expectedClosingDate: string;
+  setExpectedClosingDate: (v: string) => void;
+  
+  lastContactDate: string;
+  setLastContactDate: (v: string) => void;
+  
+  nextAction: string;
+  setNextAction: (v: string) => void;
+  
+  riskTag: string;
+  setRiskTag: (v: string) => void;
+
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
 };
 

@@ -147,6 +147,13 @@ export default function DashboardPage() {
   const [priorityFlag, setPriorityFlag] = useState(false);
   const [pipelineDate, setPipelineDate] = useState<string>('');
 
+  const [status, setStatus] = useState<string>('prospecting');        // default
+  const [leadSource, setLeadSource] = useState<string>('referral');   // default
+  const [expectedClosingDate, setExpectedClosingDate] = useState<string>(''); // YYYY-MM-DD
+  const [lastContactDate, setLastContactDate] = useState<string>('');        // YYYY-MM-DD
+  const [nextAction, setNextAction] = useState<string>('');
+  const [riskTag, setRiskTag] = useState<string>('');
+
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   
@@ -224,7 +231,13 @@ useEffect(() => {
             quadrant,
             remarks,
             priority_flag,
-            pipeline_date
+            pipeline_date,
+            status,
+            lead_source,
+            expected_closing_date,
+            last_contact_date,
+            next_action,
+            risk_tag
           `)
           .eq('owner_id', userId)
           .order('created_at', { ascending: false }),
@@ -271,6 +284,13 @@ useEffect(() => {
     setPriorityFlag(false);
     setPipelineDate('');
     setFormError(null);
+
+    setStatus('prospecting');
+    setLeadSource('referral');
+    setExpectedClosingDate('');
+    setLastContactDate('');
+    setNextAction('');
+    setRiskTag('');
   };
 
   //
@@ -316,6 +336,12 @@ useEffect(() => {
         remarks: remarks || null,
         priority_flag: priorityFlag,
         pipeline_date: pipelineDate || null,
+        status: status || 'prospecting',
+        lead_source: leadSource || 'referral',
+        expected_closing_date: expectedClosingDate || null,
+        last_contact_date: lastContactDate || null,
+        next_action: nextAction || null,
+        risk_tag: riskTag || null,
       });
 
       if (error) {
@@ -340,7 +366,13 @@ useEffect(() => {
           quadrant,
           remarks,
           priority_flag,
-          pipeline_date
+          pipeline_date,
+          status,
+          lead_source,
+          expected_closing_date,
+          last_contact_date,
+          next_action,
+          risk_tag
         `
         )
         .eq('owner_id', userId)
@@ -524,6 +556,12 @@ useEffect(() => {
       remarks: selectedPipeline.remarks ?? '',
       priority_flag: !!selectedPipeline.priority_flag,
       pipeline_date: selectedPipeline.pipeline_date ?? '',
+      status: selectedPipeline.status ?? 'prospecting',
+      lead_source: selectedPipeline.lead_source ?? 'referral',
+      expected_closing_date: selectedPipeline.expected_closing_date ?? '',
+      last_contact_date: selectedPipeline.last_contact_date ?? '',
+      next_action: selectedPipeline.next_action ?? '',
+      risk_tag: selectedPipeline.risk_tag ?? '',
     });
   };
 
@@ -562,6 +600,12 @@ useEffect(() => {
           remarks: editForm.remarks || null,
           priority_flag: editForm.priority_flag,
           pipeline_date: editForm.pipeline_date || null,
+          status: editForm.status || 'prospecting',
+          lead_source: editForm.lead_source || 'referral',
+          expected_closing_date: editForm.expected_closing_date || null,
+          last_contact_date: editForm.last_contact_date || null,
+          next_action: editForm.next_action || null,
+          risk_tag: editForm.risk_tag || null,
         })
         .eq('id', selectedPipeline.id)
         .eq('owner_id', userId);
@@ -588,7 +632,13 @@ useEffect(() => {
           quadrant,
           remarks,
           priority_flag,
-          pipeline_date
+          pipeline_date,
+          status,
+          lead_source,
+          expected_closing_date,
+          last_contact_date,
+          next_action,
+          risk_tag
         `
         )
         .eq('owner_id', userId)
@@ -697,6 +747,12 @@ useEffect(() => {
       remarks: row.remarks ?? '',
       priority_flag: !!row.priority_flag,
       pipeline_date: row.pipeline_date ?? '',
+      status: row.status ?? 'prospecting',
+      lead_source: row.lead_source ?? 'referral',
+      expected_closing_date: row.expected_closing_date ?? '',
+      last_contact_date: row.last_contact_date ?? '',
+      next_action: row.next_action ?? '',
+      risk_tag: row.risk_tag ?? '',
     });
   };
 
@@ -894,6 +950,18 @@ useEffect(() => {
               priorityFlag={priorityFlag}
               setPriorityFlag={setPriorityFlag}
               onSubmit={handleSubmit}
+              status={status}
+              setStatus={setStatus}
+              leadSource={leadSource}
+              setLeadSource={setLeadSource}
+              expectedClosingDate={expectedClosingDate}
+              setExpectedClosingDate={setExpectedClosingDate}
+              lastContactDate={lastContactDate}
+              setLastContactDate={setLastContactDate}
+              nextAction={nextAction}
+              setNextAction={setNextAction}
+              riskTag={riskTag}
+              setRiskTag={setRiskTag}
             />
           </div>
         </div>
