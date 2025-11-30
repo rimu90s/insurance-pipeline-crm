@@ -403,20 +403,20 @@ const prettyLeadSource = (source?: string | null) => {
       {/* ======================================================
           1. TOOLBAR: FILTER + ACTION BUTTONS
          ====================================================== */}
-      <div className="flex flex-col gap-2 mb-3 md:flex-row md:items-center md:justify-between">
+      {/* <div className="flex flex-col gap-2 mb-3 md:flex-row md:items-center md:justify-between"> */}
         {/* -----------------------------
             BAGIAN KIRI: CLUSTER FILTER
            ----------------------------- */}
-        <div className="flex flex-wrap gap-2">
-          <div className="inline-flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-2 py-1">
+        {/* <div className="flex flex-wrap gap-2">
+          <div className="inline-flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-2 py-1"> */}
             {/* Label kecil "Filter" */}
-            <span className="text-[11px] text-slate-500 flex items-center gap-1">
+            {/* <span className="text-[11px] text-slate-500 flex items-center gap-1">
               <span>🔍</span>
               <span>Filter</span>
-            </span>
+            </span> */}
 
             {/* Filter Produk */}
-            <select
+            {/* <select
               className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
               value={filterProductId}
               onChange={(e) => setFilterProductId(e.target.value)}
@@ -429,10 +429,10 @@ const prettyLeadSource = (source?: string | null) => {
               ))}
             </select>
 
-            <span className="h-3 w-px bg-slate-200" />
+            <span className="h-3 w-px bg-slate-200" /> */}
 
             {/* Filter Plan (week 1–4) */}
-            <select
+            {/* <select
               className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
               value={filterPlan}
               onChange={(e) => setFilterPlan(e.target.value)}
@@ -444,10 +444,10 @@ const prettyLeadSource = (source?: string | null) => {
               <option value="week 4">week 4</option>
             </select>
 
-            <span className="h-3 w-px bg-slate-200" />
+            <span className="h-3 w-px bg-slate-200" /> */}
 
             {/* Filter Quadrant (k1–k4) */}
-            <select
+            {/* <select
               className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
               value={filterQuadrant}
               onChange={(e) => setFilterQuadrant(e.target.value)}
@@ -459,10 +459,10 @@ const prettyLeadSource = (source?: string | null) => {
               <option value="k4">k4</option>
             </select>
 
-            <span className="h-3 w-px bg-slate-200" />
+            <span className="h-3 w-px bg-slate-200" /> */}
 
             {/* Filter Marketer */}
-            <select
+            {/* <select
               className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
               value={filterMarketerId}
               onChange={(e) => setFilterMarketerId(e.target.value)}
@@ -475,10 +475,10 @@ const prettyLeadSource = (source?: string | null) => {
               ))}
             </select>
 
-            <span className="h-3 w-px bg-slate-200" />
+            <span className="h-3 w-px bg-slate-200" /> */}
 
             {/* Filter Prioritas */}
-            <select
+            {/* <select
               className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
@@ -488,10 +488,10 @@ const prettyLeadSource = (source?: string | null) => {
               <option value="nonprio">Non-prioritas</option>
             </select>
 
-            <span className="h-3 w-px bg-slate-200" />
+            <span className="h-3 w-px bg-slate-200" /> */}
 
             {/* Filter Status */}
-            <select
+            {/* <select
               className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -506,10 +506,10 @@ const prettyLeadSource = (source?: string | null) => {
               <option value="closed_lost">Closed lost</option>
             </select>
                         
-            <span className="h-3 w-px bg-slate-200" />
+            <span className="h-3 w-px bg-slate-200" /> */}
                         
             {/* Filter Lead source */}
-            <select
+            {/* <select
               className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
               value={filterLeadSource}
               onChange={(e) => setFilterLeadSource(e.target.value)}
@@ -521,44 +521,44 @@ const prettyLeadSource = (source?: string | null) => {
               <option value="walk_in">Walk-in</option>
               <option value="agent_referral">Agent referral</option>
               <option value="existing_customer">Existing customer</option>
-            </select>
+            </select> */}
                         
-          </div>
-        </div>
+          {/* </div>
+        </div> */}
 
         {/* -----------------------------
             BAGIAN KANAN: BUTTON ACTION
            ----------------------------- */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* <div className="flex flex-wrap items-center gap-2"> */}
           {/* Reset filter: kembalikan semua filter ke default */}
-          <button
+          {/* <button
             type="button"
             onClick={onResetFilters}
             className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-50"
           >
             ⟳ Reset filter
-          </button>
+          </button> */}
 
           {/* Reset sort: kembalikan sortBy & sortDirection */}
-          <button
+          {/* <button
             type="button"
             onClick={handleResetSort}
             className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-50"
           >
             ⇅ Reset sort
-          </button>
+          </button> */}
 
           {/* Export Excel */}
-          <button
+          {/* <button
             type="button"
             onClick={exportExcel}
             className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-800 hover:bg-slate-50"
           >
             ⬇️ Export Excel
-          </button>
+          </button> */}
 
           {/* Copy WA semua data terfilter */}
-          <button
+          {/* <button
             type="button"
             onClick={handleCopyAllWA}
             className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-slate-800"
@@ -566,7 +566,169 @@ const prettyLeadSource = (source?: string | null) => {
             📲 Copy WA (filter)
           </button>
         </div>
+      </div> */}
+
+            {/* ======================================================
+          1. TOOLBAR: FILTER + ACTION BUTTONS (layout baru)
+         ====================================================== */}
+      <div className="mb-4 space-y-3">
+        {/* BARIS ATAS: TITLE FILTER + ACTION BUTTONS */}
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          {/* Kiri: label filter */}
+          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-1.5">
+            <span>🔍</span>
+            <div className="flex flex-col leading-tight">
+              <span className="text-[11px] font-medium text-slate-700">
+                Filter data pipeline
+              </span>
+              <span className="text-[10px] text-slate-500">
+                Sesuaikan produk, plan, marketer, prioritas, dll.
+              </span>
+            </div>
+          </div>
+
+          {/* Kanan: tombol aksi global */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={onResetFilters}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-50"
+            >
+              ⟳ Reset filter
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResetSort}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-50"
+            >
+              ⇅ Reset sort
+            </button>
+
+            <button
+              type="button"
+              onClick={exportExcel}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-800 hover:bg-slate-50"
+            >
+              ⬇️ Export Excel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyAllWA}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-slate-800"
+            >
+              📲 Copy WA (filter)
+            </button>
+          </div>
+        </div>
+
+        {/* BARIS BAWAH: GRID FILTER INPUT */}
+        <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-4">
+          {/* Produk */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium text-slate-600">
+              Produk
+            </label>
+            <select
+              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-300"
+              value={filterProductId}
+              onChange={(e) => setFilterProductId(e.target.value)}
+            >
+              <option value="all">Semua produk</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Plan (week) */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium text-slate-600">
+              Plan (week)
+            </label>
+            <select
+              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-300"
+              value={filterPlan}
+              onChange={(e) => setFilterPlan(e.target.value)}
+            >
+              <option value="all">Semua plan</option>
+              <option value="week 1">week 1</option>
+              <option value="week 2">week 2</option>
+              <option value="week 3">week 3</option>
+              <option value="week 4">week 4</option>
+            </select>
+          </div>
+
+          {/* Quadrant */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium text-slate-600">
+              Quadrant
+            </label>
+            <select
+              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-300"
+              value={filterQuadrant}
+              onChange={(e) => setFilterQuadrant(e.target.value)}
+            >
+              <option value="all">Semua quadrant</option>
+              <option value="k1">k1</option>
+              <option value="k2">k2</option>
+              <option value="k3">k3</option>
+              <option value="k4">k4</option>
+            </select>
+          </div>
+
+          {/* Marketer */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium text-slate-600">
+              Marketer
+            </label>
+            <select
+              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-300"
+              value={filterMarketerId}
+              onChange={(e) => setFilterMarketerId(e.target.value)}
+            >
+              <option value="all">Semua marketer</option>
+              {marketers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Prioritas */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium text-slate-600">
+              Prioritas
+            </label>
+            <select
+              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-300"
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+            >
+              <option value="all">Semua prioritas</option>
+              <option value="prio">Prioritas saja</option>
+              <option value="nonprio">Non-prioritas</option>
+            </select>
+          </div>
+
+          {/* Status (opsional – kalau nanti mau pakai) */}
+          {/* contoh:
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium text-slate-600">
+              Status
+            </label>
+            <select ...>
+              ...
+            </select>
+          </div>
+          */}
+        </div>
       </div>
+
 
       {/* ======================================================
           2. TABLE WRAPPER (OVERFLOW-X UNTUK KOLOM BANYAK)
