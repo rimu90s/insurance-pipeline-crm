@@ -331,6 +331,57 @@ export default function PipelineTable({
     );
   }
 
+  // Format tanggal jadi dd/MM/yyyy (atau "-" kalau kosong)
+const formatDate = (value?: string | null) => {
+  if (!value) return '-';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString('id-ID');
+};
+
+const prettyStatus = (status?: string | null) => {
+  if (!status) return '-';
+  switch (status) {
+    case 'prospecting':
+      return 'Prospecting';
+    case 'approach':
+      return 'Approach';
+    case 'presentation':
+      return 'Presentation';
+    case 'follow_up':
+      return 'Follow up';
+    case 'negotiation':
+      return 'Negotiation';
+    case 'closing':
+      return 'Closing';
+    case 'closed_lost':
+      return 'Closed lost';
+    default:
+      return status;
+  }
+};
+
+const prettyLeadSource = (source?: string | null) => {
+  if (!source) return '-';
+  switch (source) {
+    case 'referral':
+      return 'Referral';
+    case 'bank':
+      return 'Bank';
+    case 'digital_ads':
+      return 'Digital ads';
+    case 'walk_in':
+      return 'Walk-in';
+    case 'agent_referral':
+      return 'Agent referral';
+    case 'existing_customer':
+      return 'Existing customer';
+    default:
+      return source;
+  }
+};
+
+
   /**
    * ============================================================
    * I. MAIN RENDER: TOOLBAR + TABLE
@@ -575,16 +626,27 @@ export default function PipelineTable({
                     </td>
 
                     {/* Nasabah + tanggal pipeline kecil di bawah */}
-                    <td className="px-2 py-2 align-top">
+                    <td className="align-top px-3 py-2 text-xs">
                       <div className="flex flex-col">
+                        {/* Baris 1: Nama nasabah */}
                         <span className="font-medium text-slate-900">
                           {row.customer_name}
                         </span>
-                        {row.pipeline_date && (
-                          <span className="text-[10px] text-slate-500">
-                            Pipeline: {row.pipeline_date}
+
+                        {/* Baris 2: Tanggal pipeline */}
+                        <span className="text-[11px] text-slate-500">
+                          Pipeline: {formatDate(row.pipeline_date)}
+                        </span>
+
+                        {/* Baris 3: Status + lead source */}
+                        <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-slate-500">
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-px">
+                            Status: {prettyStatus(row.status)}
                           </span>
-                        )}
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-px">
+                            Source: {prettyLeadSource(row.lead_source)}
+                          </span>
+                        </div>
                       </div>
                     </td>
 
@@ -618,13 +680,30 @@ export default function PipelineTable({
                     </td>
 
                     {/* Plan / Quadrant */}
-                    <td className="px-2 py-2 align-top">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="inline-flex w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700">
-                          {row.execution_plan ?? '-'}
+                    <td className="align-top px-3 py-2 text-xs">
+                      {/* Baris 1: Plan + Quadrant seperti sekarang */}
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-[11px]">
+                          {row.execution_plan || '-'}
                         </span>
-                        <span className="inline-flex w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700">
-                          {row.quadrant ?? '-'}
+                        <span className="inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-[11px]">
+                          {row.quadrant || '-'}
+                        </span>
+                      </div>
+
+                      {/* Baris 2: Expected closing */}
+                      <div className="text-[11px] text-slate-500">
+                        Expected closing:{' '}
+                        <span className="font-medium text-slate-700">
+                          {formatDate(row.expected_closing_date)}
+                        </span>
+                      </div>
+
+                      {/* Baris 3: Last contact */}
+                      <div className="text-[11px] text-slate-500">
+                        Last contact:{' '}
+                        <span className="font-medium text-slate-700">
+                          {formatDate(row.last_contact_date)}
                         </span>
                       </div>
                     </td>
@@ -641,10 +720,27 @@ export default function PipelineTable({
                     </td>
 
                     {/* Remarks / Keterangan */}
-                    <td className="px-2 py-2 align-top max-w-[260px]">
-                      <span className="block text-[11px] text-slate-700 line-clamp-3">
-                        {row.remarks ?? '-'}
-                      </span>
+                    <td className="align-top px-3 py-2 text-xs">
+                      {/* Baris 1: Remarks utama */}
+                      <div className="text-slate-800">
+                        {row.remarks || '-'}
+                      </div>
+
+                      {/* Baris 2: Next action */}
+                      {row.next_action && (
+                        <div className="mt-1 text-[11px] text-slate-600">
+                          <span className="font-medium text-slate-700">Next:</span>{' '}
+                          {row.next_action}
+                        </div>
+                      )}
+
+                      {/* Baris 3: Risk / Objection */}
+                      {row.risk_tag && (
+                        <div className="mt-0.5 text-[11px] text-slate-600">
+                          <span className="font-medium text-slate-700">Risk:</span>{' '}
+                          {row.risk_tag}
+                        </div>
+                      )}
                     </td>
 
                     {/* ACTIONS (sticky di sisi kanan) */}
