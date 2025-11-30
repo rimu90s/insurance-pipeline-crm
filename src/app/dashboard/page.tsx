@@ -84,6 +84,9 @@ export default function DashboardPage() {
   const [filterPlan, setFilterPlan] = useState<string>('all');
   const [filterMarketerId, setFilterMarketerId] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all'); // all | prio | nonprio
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterLeadSource, setFilterLeadSource] = useState<string>('all');
+
 
 
     // LOAD FILTER from localStorage (sekali saat awal)
@@ -409,34 +412,58 @@ useEffect(() => {
   // ──────────────────────────────────────────────────────────
   //
   const filteredPipelines = pipelines.filter((row) => {
-    const matchProduct =
-      filterProductId === 'all' ? true : row.product_id === filterProductId;
+  // Produk
+  const matchProduct =
+    filterProductId === 'all' ? true : row.product_id === filterProductId;
 
-    const matchPlan =
-      filterPlan === 'all'
-        ? true
-        : (row.execution_plan ?? '').toLowerCase() === filterPlan.toLowerCase();
+  // Plan (week 1–4)
+  const matchPlan =
+    filterPlan === 'all'
+      ? true
+      : (row.execution_plan ?? '').toLowerCase() === filterPlan.toLowerCase();
 
-    const matchQuadrant =
-      filterQuadrant === 'all'
-        ? true
-        : (row.quadrant ?? '').toLowerCase() === filterQuadrant.toLowerCase();
+  // Quadrant (k1–k4)
+  const matchQuadrant =
+    filterQuadrant === 'all'
+      ? true
+      : (row.quadrant ?? '').toLowerCase() === filterQuadrant.toLowerCase();
 
-    const matchMarketer =
-      filterMarketerId === 'all'
-        ? true
-        : row.marketer_id === filterMarketerId;
+  // Marketer
+  const matchMarketer =
+    filterMarketerId === 'all'
+      ? true
+      : (row.marketer_id ?? '') === filterMarketerId;
 
-    const matchPriority =
-      filterPriority === 'all'
-        ? true
-        : filterPriority === 'prio'
-        ? !!row.priority_flag
-        : !row.priority_flag;
+  // Prioritas
+  const matchPriority =
+    filterPriority === 'all'
+      ? true
+      : filterPriority === 'prio'
+      ? !!row.priority_flag
+      : !row.priority_flag;
 
-    return matchProduct && matchPlan && matchQuadrant && matchMarketer && matchPriority;
-  });
+  // ✅ Status (baru)
+  const matchStatus =
+    filterStatus === 'all'
+      ? true
+      : (row.status ?? '').toLowerCase() === filterStatus.toLowerCase();
 
+  // ✅ Lead source (baru)
+  const matchLeadSource =
+    filterLeadSource === 'all'
+      ? true
+      : (row.lead_source ?? '').toLowerCase() === filterLeadSource.toLowerCase();
+
+  return (
+    matchProduct &&
+    matchPlan &&
+    matchQuadrant &&
+    matchMarketer &&
+    matchPriority &&
+    matchStatus &&
+    matchLeadSource
+  );
+});
 
   const totalApeIdr = filteredPipelines.reduce(
     (acc, row) => acc + (row.ape_idr ?? 0),
@@ -507,6 +534,8 @@ useEffect(() => {
     setFilterQuadrant('all');
     setFilterMarketerId('all');
     setFilterPriority('all');
+    setFilterStatus('all');    
+    setFilterLeadSource('all');
   };
 
 
@@ -888,6 +917,11 @@ useEffect(() => {
             setFilterMarketerId={setFilterMarketerId}
             filterPriority={filterPriority}
             setFilterPriority={setFilterPriority}
+
+            filterStatus={filterStatus}
+            setFilterStatus={setFilterStatus}
+            filterLeadSource={filterLeadSource}
+            setFilterLeadSource={setFilterLeadSource}
 
             exportExcel={exportExcel}
             openDetailModal={openDetailModal}

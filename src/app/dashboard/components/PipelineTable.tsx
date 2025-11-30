@@ -99,6 +99,12 @@ type PipelineTableProps = {
   filterPriority: string; // 'all' | 'prio' | 'nonprio'
   setFilterPriority: (v: string) => void;
 
+  filterStatus: string;
+  setFilterStatus: (v: string) => void;
+  filterLeadSource: string;
+  setFilterLeadSource: (v: string) => void;
+
+
   // Aksi global dari parent
   exportExcel: () => void;
   openDetailModal: (row: PipelineRow) => void;
@@ -130,6 +136,10 @@ export default function PipelineTable({
   setFilterMarketerId,
   filterPriority,
   setFilterPriority,
+  filterStatus,
+  setFilterStatus,
+  filterLeadSource,
+  setFilterLeadSource,
   exportExcel,
   openDetailModal,
   onEditRow,
@@ -477,6 +487,42 @@ const prettyLeadSource = (source?: string | null) => {
               <option value="prio">Prioritas saja</option>
               <option value="nonprio">Non-prioritas</option>
             </select>
+
+            <span className="h-3 w-px bg-slate-200" />
+
+            {/* Filter Status */}
+            <select
+              className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua status</option>
+              <option value="prospecting">Prospecting</option>
+              <option value="approach">Approach</option>
+              <option value="presentation">Presentation</option>
+              <option value="follow_up">Follow up</option>
+              <option value="negotiation">Negotiation</option>
+              <option value="closing">Closing</option>
+              <option value="closed_lost">Closed lost</option>
+            </select>
+                        
+            <span className="h-3 w-px bg-slate-200" />
+                        
+            {/* Filter Lead source */}
+            <select
+              className="border-0 bg-transparent text-[11px] text-slate-800 focus:outline-none"
+              value={filterLeadSource}
+              onChange={(e) => setFilterLeadSource(e.target.value)}
+            >
+              <option value="all">Semua sumber</option>
+              <option value="referral">Referral</option>
+              <option value="bank">Bank</option>
+              <option value="digital_ads">Digital ads</option>
+              <option value="walk_in">Walk-in</option>
+              <option value="agent_referral">Agent referral</option>
+              <option value="existing_customer">Existing customer</option>
+            </select>
+                        
           </div>
         </div>
 
