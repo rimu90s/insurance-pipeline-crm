@@ -9,13 +9,26 @@ import PipelineSummary from './PipelineSummary';
 import PipelineForm from './PipelineForm';
 import PipelineTable from './PipelineTable';
 import PipelineDetailModal from './PipelineDetailModal';
-import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
-import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import DashboardTopBar from './DashboardTopBar';
 import Toast from './Toast';
+import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
+import { buildWhatsAppMessage } from '@/utils/whatsapp';
+import { usePipelineFilters } from '../hooks/usePipelineFilters';
 
+// ──────────────────────────────────────────────────────────────
+//  Tipe lokal untuk data dropdown (produk & marketer)
+// ──────────────────────────────────────────────────────────────
 
-const FILTER_KEY = 'sales-pipeline-filters-v1';
+type Product = {
+  id: string;
+  name: string;
+};
+
+type Marketer = {
+  id: string;
+  name: string;
+  branch: string | null;
+};
 
 // Query select untuk pipelines (dipakai di beberapa tempat)
 const PIPELINE_SELECT = `
@@ -41,21 +54,6 @@ const PIPELINE_SELECT = `
 `;
 
 // ──────────────────────────────────────────────────────────────
-//  Tipe lokal untuk data dropdown (produk & marketer)
-// ──────────────────────────────────────────────────────────────
-
-type Product = {
-  id: string;
-  name: string;
-};
-
-type Marketer = {
-  id: string;
-  name: string;
-  branch: string | null;
-};
-
-// ──────────────────────────────────────────────────────────────
 //  Halaman utama Dashboard
 // ──────────────────────────────────────────────────────────────
 
@@ -63,8 +61,6 @@ export default function PipelinePage() {
   const router = useRouter();
 
   // 1. STATE: Auth & user
-  //    - cek user login
-  //    - simpan email & id untuk owner_id dan nama file export
   const [loadingUser, setLoadingUser] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -88,14 +84,27 @@ export default function PipelinePage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // 4. STATE: Filter list pipeline (untuk table & summary)
-  const [filterProductId, setFilterProductId] = useState<string>('all');
-  const [filterQuadrant, setFilterQuadrant] = useState<string>('all');
-  const [filterPlan, setFilterPlan] = useState<string>('all');
-  const [filterMarketerId, setFilterMarketerId] = useState<string>('all');
-  const [filterPriority, setFilterPriority] = useState<string>('all'); // all | prio | nonprio
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterLeadSource, setFilterLeadSource] = useState<string>('all');
+  // 4. STATE: Filter list pipeline (dipindah ke hook)
+  const {
+    filterProductId,
+    setFilterProductId,
+    filterPlan,
+    setFilterPlan,
+    filterQuadrant,
+    setFilterQuadrant,
+    filterMarketerId,
+    setFilterMarketerId,
+    filterPriority,
+    setFilterPriority,
+    filterStatus,
+    setFilterStatus,
+    filterLeadSource,
+    setFilterLeadSource,
+    filteredPipelines,
+    totalApeIdr,
+    totalApeUsd,
+    resetFilters,
+  } = usePipelineFilters(pipelines);
 
   // 5. STATE: Form create pipeline (dipass ke PipelineForm)
   const [productId, setProductId] = useState('');
@@ -138,57 +147,6 @@ export default function PipelinePage() {
   };
 
   // ──────────────────────────────────────────────────────────
-  //  EFFECT: Load filter dari localStorage (sekali saat awal)
-  // ──────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(FILTER_KEY);
-      if (!raw) return;
-
-      const saved = JSON.parse(raw) as {
-        productId?: string;
-        plan?: string;
-        quadrant?: string;
-        marketerId?: string;
-        priority?: string;
-        // (bisa ditambah status / leadsource ke depannya)
-      };
-
-      if (saved.productId) setFilterProductId(saved.productId);
-      if (saved.plan) setFilterPlan(saved.plan);
-      if (saved.quadrant) setFilterQuadrant(saved.quadrant);
-      if (saved.marketerId) setFilterMarketerId(saved.marketerId);
-      if (saved.priority) setFilterPriority(saved.priority);
-    } catch (e) {
-      console.error('Failed to load filters', e);
-    }
-  }, []);
-
-  // Simpan filter ke localStorage setiap kali berubah
-  useEffect(() => {
-    const payload = {
-      productId: filterProductId,
-      plan: filterPlan,
-      quadrant: filterQuadrant,
-      marketerId: filterMarketerId,
-      priority: filterPriority,
-    };
-
-    try {
-      localStorage.setItem(FILTER_KEY, JSON.stringify(payload));
-    } catch (e) {
-      console.error('Failed to save filters', e);
-    }
-  }, [
-    filterProductId,
-    filterPlan,
-    filterQuadrant,
-    filterMarketerId,
-    filterPriority,
-  ]);
-
-  // ──────────────────────────────────────────────────────────
   //  EFFECT 1: Cek user login (redirect ke /auth kalau belum)
   // ──────────────────────────────────────────────────────────
 
@@ -227,7 +185,8 @@ export default function PipelinePage() {
           { data: pipelinesData },
         ] = await Promise.all([
           supabase.from('products').select('id, name').order('name'),
-          supabase.from('marketers')
+          supabase
+            .from('marketers')
             .select('id, name, branch')
             .order('name'),
           supabase
@@ -286,9 +245,6 @@ export default function PipelinePage() {
 
   // ──────────────────────────────────────────────────────────
   //  HANDLER: Submit form create pipeline
-  //           - insert ke Supabase
-  //           - reload pipelines
-  //           - reset form & tutup modal
   // ──────────────────────────────────────────────────────────
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -370,78 +326,7 @@ export default function PipelinePage() {
   };
 
   // ──────────────────────────────────────────────────────────
-  //  DERIVED STATE: filteredPipelines + total APE
-  // ──────────────────────────────────────────────────────────
-
-  const filteredPipelines = pipelines.filter((row) => {
-    // Produk
-    const matchProduct =
-      filterProductId === 'all' ? true : row.product_id === filterProductId;
-
-    // Plan (week 1–4)
-    const matchPlan =
-      filterPlan === 'all'
-        ? true
-        : (row.execution_plan ?? '').toLowerCase() ===
-          filterPlan.toLowerCase();
-
-    // Quadrant (k1–k4)
-    const matchQuadrant =
-      filterQuadrant === 'all'
-        ? true
-        : (row.quadrant ?? '').toLowerCase() ===
-          filterQuadrant.toLowerCase();
-
-    // Marketer
-    const matchMarketer =
-      filterMarketerId === 'all'
-        ? true
-        : (row.marketer_id ?? '') === filterMarketerId;
-
-    // Prioritas
-    const matchPriority =
-      filterPriority === 'all'
-        ? true
-        : filterPriority === 'prio'
-        ? !!row.priority_flag
-        : !row.priority_flag;
-
-    // Status
-    const matchStatus =
-      filterStatus === 'all'
-        ? true
-        : (row.status ?? '').toLowerCase() ===
-          filterStatus.toLowerCase();
-
-    // Lead source
-    const matchLeadSource =
-      filterLeadSource === 'all'
-        ? true
-        : (row.lead_source ?? '').toLowerCase() ===
-          filterLeadSource.toLowerCase();
-
-    return (
-      matchProduct &&
-      matchPlan &&
-      matchQuadrant &&
-      matchMarketer &&
-      matchPriority &&
-      matchStatus &&
-      matchLeadSource
-    );
-  });
-
-  const totalApeIdr = filteredPipelines.reduce(
-    (acc, row) => acc + (row.ape_idr ?? 0),
-    0
-  );
-  const totalApeUsd = filteredPipelines.reduce(
-    (acc, row) => acc + (row.ape_usd ?? 0),
-    0
-  );
-
-  // ──────────────────────────────────────────────────────────
-  //  HANDLER: Export ke Excel (format sesuai laporan)
+  //  HANDLER: Export ke Excel
   // ──────────────────────────────────────────────────────────
 
   const exportExcel = () => {
@@ -487,7 +372,7 @@ export default function PipelinePage() {
   };
 
   // ──────────────────────────────────────────────────────────
-  //  HANDLER: Modal create (buka / tutup) & reset filter
+  //  HANDLER: Modal create
   // ──────────────────────────────────────────────────────────
 
   const openCreateModal = () => {
@@ -497,16 +382,6 @@ export default function PipelinePage() {
 
   const closeCreateModal = () => {
     setShowCreateModal(false);
-  };
-
-  const resetFilters = () => {
-    setFilterProductId('all');
-    setFilterPlan('all');
-    setFilterQuadrant('all');
-    setFilterMarketerId('all');
-    setFilterPriority('all');
-    setFilterStatus('all');
-    setFilterLeadSource('all');
   };
 
   // ──────────────────────────────────────────────────────────
@@ -653,7 +528,6 @@ export default function PipelinePage() {
         return;
       }
 
-      // Hapus juga dari state lokal agar tabel langsung update
       setPipelines((prev) =>
         prev.filter((row) => row.id !== selectedPipeline.id)
       );
@@ -665,7 +539,7 @@ export default function PipelinePage() {
   };
 
   // ──────────────────────────────────────────────────────────
-  //  HANDLER: Copy format laporan ke WhatsApp (clipboard)
+  //  HANDLER: Copy WA
   // ──────────────────────────────────────────────────────────
 
   const copyToWhatsApp = () => {
@@ -678,7 +552,7 @@ export default function PipelinePage() {
       selectedPipeline,
       product,
       marketer,
-      'full' // modal detail = format lengkap
+      'full'
     );
 
     navigator.clipboard.writeText(msg);
@@ -699,10 +573,6 @@ export default function PipelinePage() {
     navigator.clipboard.writeText(message);
     showToast('Pesan pipeline (ringkas) sudah disalin.', 'success');
   };
-
-  // ──────────────────────────────────────────────────────────
-  //  HANDLER: Aksi langsung dari tabel (icon di kolom Action)
-  // ──────────────────────────────────────────────────────────
 
   const handleEditFromTable = (row: PipelineRow) => {
     setSelectedPipeline(row);
@@ -756,7 +626,7 @@ export default function PipelinePage() {
   };
 
   // ──────────────────────────────────────────────────────────
-  //  RENDER: Loading state
+  //  RENDER
   // ──────────────────────────────────────────────────────────
 
   if (loadingUser) {
@@ -767,18 +637,11 @@ export default function PipelinePage() {
     );
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  RENDER: Layout utama dashboard
-  // ──────────────────────────────────────────────────────────
-
   return (
     <div className="min-h-screen bg-slate-100">
-      {/* Top bar */}
       <DashboardTopBar userEmail={userEmail} onLogout={handleLogout} />
 
-      {/* Content */}
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-4">
-        {/* Ringkasan angka (3 kartu atas) */}
         <PipelineSummary
           totalCount={filteredPipelines.length}
           totalApeIdr={totalApeIdr}
@@ -786,9 +649,7 @@ export default function PipelinePage() {
           loading={loadingData}
         />
 
-        {/* Tabel pipeline + tombol tambah (form sekarang via modal) */}
         <section className="space-y-3">
-          {/* Bar atas: judul & tombol tambah pipeline */}
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
@@ -808,7 +669,6 @@ export default function PipelinePage() {
             </button>
           </div>
 
-          {/* List pipeline + filter + export */}
           <PipelineTable
             filteredPipelines={filteredPipelines}
             products={products}
@@ -838,7 +698,6 @@ export default function PipelinePage() {
         </section>
       </main>
 
-      {/* Modal create pipeline (tambah baru) */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-4 shadow-xl">
@@ -906,7 +765,6 @@ export default function PipelinePage() {
         </div>
       )}
 
-      {/* Modal detail / edit / delete / copy WA */}
       <PipelineDetailModal
         open={showDetailModal}
         pipeline={selectedPipeline}
@@ -926,9 +784,7 @@ export default function PipelinePage() {
         onCopyWA={copyToWhatsApp}
       />
 
-      {/* Toast Notification */}
       <Toast toast={toast} />
-
     </div>
   );
 }
