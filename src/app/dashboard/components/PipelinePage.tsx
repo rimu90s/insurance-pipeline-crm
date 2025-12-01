@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, FormEvent } from 'react';
 import * as XLSX from 'xlsx';
 
 import { supabase } from '@/lib/supabaseClient';
@@ -15,18 +14,15 @@ import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import { usePipelineFilters } from '../hooks/usePipelineFilters';
 import { usePipelineData } from '../hooks/usePipelineData';
+import { useAuthUser } from '../hooks/useAuthUser';
 
 // ──────────────────────────────────────────────────────────────
 //  Halaman utama Dashboard
 // ──────────────────────────────────────────────────────────────
 
 export default function PipelinePage() {
-  const router = useRouter();
-
-  // 1. STATE: Auth & user
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+  // 1. AUTH: user info & logout
+  const { loadingUser, userEmail, userId, logout } = useAuthUser();
 
   // 2. DATA: Master & pipelines (via hook)
   const {
@@ -111,36 +107,6 @@ export default function PipelinePage() {
   ) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3000);
-  };
-
-  // ──────────────────────────────────────────────────────────
-  //  EFFECT 1: Cek user login (redirect ke /auth kalau belum)
-  // ──────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    const init = async () => {
-      const { data, error } = await supabase.auth.getUser();
-
-      if (error || !data.user) {
-        router.push('/auth');
-        return;
-      }
-
-      setUserEmail(data.user.email ?? null);
-      setUserId(data.user.id);
-      setLoadingUser(false);
-    };
-
-    init();
-  }, [router]);
-
-  // ──────────────────────────────────────────────────────────
-  //  HANDLER: Logout
-  // ──────────────────────────────────────────────────────────
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/auth');
   };
 
   // ──────────────────────────────────────────────────────────
@@ -382,24 +348,25 @@ export default function PipelinePage() {
       const { error } = await supabase
         .from('pipelines')
         .update({
-        product_id: editForm.product_id,
-        marketer_id: editForm.marketer_id || null,
-        customer_name: editForm.customer_name,
-        branch: editForm.branch || null,
-        class: editForm.class || null,
-        ape_idr: parsedApeIdr,
-        ape_usd: parsedApeUsd,
-        execution_plan: editForm.execution_plan,
-        quadrant: editForm.quadrant,
-        remarks: editForm.remarks || null,
-        priority_flag: editForm.priority_flag,
-        pipeline_date: editForm.pipeline_date || null,
-        status: editForm.status || 'prospecting',
-        lead_source: editForm.lead_source || 'referral',
-        expected_closing_date: editForm.expected_closing_date || null,
-        last_contact_date: editForm.last_contact_date || null,
-        next_action: editForm.next_action || null,
-        risk_tag: editForm.risk_tag || null,
+          product_id: editForm.product_id,
+          marketer_id: editForm.marketer_id || null,
+          customer_name: editForm.customer_name,
+          branch: editForm.branch || null,
+          class: editForm.class || null,
+          ape_idr: parsedApeIdr,
+          ape_usd: parsedApeUsd,
+          execution_plan: editForm.execution_plan,
+          quadrant: editForm.quadrant,
+          remarks: editForm.remarks || null,
+          priority_flag: editForm.priority_flag,
+          pipeline_date: editForm.pipeline_date || null,
+          status: editForm.status || 'prospecting',
+          lead_source: editForm.lead_source || 'referral',
+          expected_closing_date:
+            editForm.expected_closing_date || null,
+          last_contact_date: editForm.last_contact_date || null,
+          next_action: editForm.next_action || null,
+          risk_tag: editForm.risk_tag || null,
         })
         .eq('id', selectedPipeline.id)
         .eq('owner_id', userId);
@@ -552,7 +519,7 @@ export default function PipelinePage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <DashboardTopBar userEmail={userEmail} onLogout={handleLogout} />
+      <DashboardTopBar userEmail={userEmail} onLogout={logout} />
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-4">
         <PipelineSummary
