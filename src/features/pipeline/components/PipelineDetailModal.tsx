@@ -90,49 +90,54 @@ export default function PipelineDetailModal({
       return { ...prev, [field]: value };
     });
   };
+  
+const handleMoneyInput = (field: 'ape_idr' | 'ape_usd', rawValue: string) => {
+  const digitsOnly = rawValue.replace(/\D/g, '');
+  const limited = digitsOnly.slice(0, 15);
 
-  const handleMoneyInput = (field: 'ape_idr' | 'ape_usd', rawValue: string) => {
-    // Hanya digit, buang karakter lain
-    const digitsOnly = rawValue.replace(/[^\d]/g, '');
+  if (!limited) {
+    setEditForm((prev) => (prev ? { ...prev, [field]: '' } : prev));
+    return;
+  }
 
-    // Batasi maksimal 15 digit (bisa kamu sesuaikan)
-    const limited = digitsOnly.slice(0, 15);
+  const asNumber = Number(limited);
 
-    // Format dengan pemisah ribuan: 1000000 -> 1,000,000
-    const formatted = limited.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const formatted =
+    field === 'ape_idr'
+      ? asNumber.toLocaleString('id-ID')   // 250.000.000
+      : asNumber.toLocaleString('en-US');  // 250,000,000
 
-    setEditForm((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        [field]: formatted,
+  setEditForm((prev) => (prev ? { ...prev, [field]: formatted } : prev));
+};
+
+      const current: PipelineEditForm =
+        editMode && editForm
+        ? editForm
+        : {
+        product_id: pipeline.product_id,
+        marketer_id: pipeline.marketer_id ?? '',
+        customer_name: pipeline.customer_name,
+        branch: pipeline.branch ?? '',
+        class: pipeline.class ?? '',
+        // format awal di field
+        ape_idr: pipeline.ape_idr
+          ? pipeline.ape_idr.toLocaleString('id-ID')
+          : '',
+        ape_usd: pipeline.ape_usd
+          ? pipeline.ape_usd.toLocaleString('en-US')
+          : '',
+        execution_plan: pipeline.execution_plan ?? 'week 1',
+        quadrant: pipeline.quadrant ?? 'k1',
+        remarks: pipeline.remarks ?? '',
+        priority_flag: !!pipeline.priority_flag,
+        pipeline_date: pipeline.pipeline_date ?? '',
+        status: pipeline.status ?? 'prospecting',
+        lead_source: pipeline.lead_source ?? 'referral',
+        expected_closing_date: pipeline.expected_closing_date ?? '',
+        last_contact_date: pipeline.last_contact_date ?? '',
+        next_action: pipeline.next_action ?? '',
+        risk_tag: pipeline.risk_tag ?? '',
       };
-    });
-  };
-
-  const current: PipelineEditForm =
-    editMode && editForm
-      ? editForm
-      : {
-          product_id: pipeline.product_id,
-          marketer_id: pipeline.marketer_id ?? '',
-          customer_name: pipeline.customer_name,
-          branch: pipeline.branch ?? '',
-          class: pipeline.class ?? '',
-          ape_idr: pipeline.ape_idr ? String(pipeline.ape_idr) : '',
-          ape_usd: pipeline.ape_usd ? String(pipeline.ape_usd) : '',
-          execution_plan: pipeline.execution_plan ?? 'week 1',
-          quadrant: pipeline.quadrant ?? 'k1',
-          remarks: pipeline.remarks ?? '',
-          priority_flag: !!pipeline.priority_flag,
-          pipeline_date: pipeline.pipeline_date ?? '',
-          status: pipeline.status ?? 'prospecting',
-          lead_source: pipeline.lead_source ?? 'referral',
-          expected_closing_date: pipeline.expected_closing_date ?? '',
-          last_contact_date: pipeline.last_contact_date ?? '',
-          next_action: pipeline.next_action ?? '',
-          risk_tag: pipeline.risk_tag ?? '',
-        };
 
   const formatIdr = (val: number | null | undefined) => {
     if (val === null || val === undefined) return '—';
@@ -357,36 +362,53 @@ export default function PipelineDetailModal({
             </h4>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {/* APE IDR */}
-              <div className="space-y-1">
-                <p className="text-[11px] text-slate-500">APE (IDR)</p>
-                {!editMode ? (
-                  <p className="text-sm text-slate-900">
-                    {formatIdr(pipeline.ape_idr)}
-                  </p>
-                ) : (
-                  <input
-                    className="input"
-                    value={current.ape_idr}
-                    onChange={(e) => handleMoneyInput('ape_idr', e.target.value)}
-                  />
-                )}
-              </div>
+    <div className="space-y-1">
+      <p className="text-[11px] text-slate-500">APE (IDR)</p>
+      {!editMode ? (
+        <p className="text-sm text-slate-900">
+          {formatIdr(pipeline.ape_idr)}
+        </p>
+      ) : (
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[11px] text-slate-500">
+            Rp
+          </span>
+          <input
+            className="w-full rounded-lg border border-slate-300 bg-white pl-8 pr-3 py-2 text-xs outline-none focus:border-slate-400"
+            inputMode="numeric"
+            autoComplete="off"
+            value={current.ape_idr}
+            onChange={(e) => handleMoneyInput('ape_idr', e.target.value)}
+            placeholder="0"
+          />
+        </div>
+      )}
+    </div>
 
-              {/* APE USD */}
-              <div className="space-y-1">
-                <p className="text-[11px] text-slate-500">APE (USD)</p>
-                {!editMode ? (
-                  <p className="text-sm text-slate-900">
-                    {pipeline.ape_usd ?? 0}
-                  </p>
-                ) : (
-                  <input
-                    className="input"
-                    value={current.ape_usd}
-                    onChange={(e) => handleMoneyInput('ape_usd', e.target.value)}
-                  />
-                )}
-              </div>
+    {/* APE USD */}
+    <div className="space-y-1">
+      <p className="text-[11px] text-slate-500">APE (USD)</p>
+      {!editMode ? (
+        <p className="text-sm text-slate-900">
+          {formatUsd(pipeline.ape_usd)}
+        </p>
+      ) : (
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[11px] text-slate-500">
+            $
+          </span>
+          <input
+            className="w-full rounded-lg border border-slate-300 bg-white pl-7 pr-3 py-2 text-xs outline-none focus:border-slate-400"
+            inputMode="numeric"
+            autoComplete="off"
+            value={current.ape_usd}
+            onChange={(e) => handleMoneyInput('ape_usd', e.target.value)}
+            placeholder="0"
+          />
+        </div>
+      )}
+    </div>
+
 
               {/* Execution Plan */}
               <div className="space-y-1">

@@ -3,6 +3,7 @@
 import React from 'react';
 import FormSection from './FormSection';
 
+
 // Tipe lokal sederhana (mengikuti struktur dari hooks)
 type Product = {
   id: string;
