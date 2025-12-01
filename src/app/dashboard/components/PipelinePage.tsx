@@ -14,44 +14,7 @@ import Toast from './Toast';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import { usePipelineFilters } from '../hooks/usePipelineFilters';
-
-// ──────────────────────────────────────────────────────────────
-//  Tipe lokal untuk data dropdown (produk & marketer)
-// ──────────────────────────────────────────────────────────────
-
-type Product = {
-  id: string;
-  name: string;
-};
-
-type Marketer = {
-  id: string;
-  name: string;
-  branch: string | null;
-};
-
-// Query select untuk pipelines (dipakai di beberapa tempat)
-const PIPELINE_SELECT = `
-  id,
-  product_id,
-  marketer_id,
-  customer_name,
-  branch,
-  class,
-  ape_idr,
-  ape_usd,
-  execution_plan,
-  quadrant,
-  remarks,
-  priority_flag,
-  pipeline_date,
-  status,
-  lead_source,
-  expected_closing_date,
-  last_contact_date,
-  next_action,
-  risk_tag
-`;
+import { usePipelineData } from '../hooks/usePipelineData';
 
 // ──────────────────────────────────────────────────────────────
 //  Halaman utama Dashboard
@@ -65,11 +28,15 @@ export default function PipelinePage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // 2. STATE: Master data & pipelines
-  const [products, setProducts] = useState<Product[]>([]);
-  const [marketers, setMarketers] = useState<Marketer[]>([]);
-  const [pipelines, setPipelines] = useState<PipelineRow[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  // 2. DATA: Master & pipelines (via hook)
+  const {
+    products,
+    marketers,
+    pipelines,
+    setPipelines,
+    loadingData,
+    reloadPipelines,
+  } = usePipelineData(userId);
 
   // 3a. STATE: Modal create pipeline (tambah baru)
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -84,7 +51,7 @@ export default function PipelinePage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // 4. STATE: Filter list pipeline (dipindah ke hook)
+  // 4. STATE: Filter list pipeline (hook)
   const {
     filterProductId,
     setFilterProductId,
@@ -166,46 +133,6 @@ export default function PipelinePage() {
 
     init();
   }, [router]);
-
-  // ──────────────────────────────────────────────────────────
-  //  EFFECT 2: Fetch products, marketers, dan pipelines
-  //            setelah userId diketahui
-  // ──────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!userId) return;
-
-    const fetchAll = async () => {
-      setLoadingData(true);
-
-      try {
-        const [
-          { data: productsData },
-          { data: marketersData },
-          { data: pipelinesData },
-        ] = await Promise.all([
-          supabase.from('products').select('id, name').order('name'),
-          supabase
-            .from('marketers')
-            .select('id, name, branch')
-            .order('name'),
-          supabase
-            .from('pipelines')
-            .select(PIPELINE_SELECT)
-            .eq('owner_id', userId)
-            .order('created_at', { ascending: false }),
-        ]);
-
-        setProducts(productsData ?? []);
-        setMarketers(marketersData ?? []);
-        setPipelines((pipelinesData ?? []) as PipelineRow[]);
-      } finally {
-        setLoadingData(false);
-      }
-    };
-
-    fetchAll();
-  }, [userId]);
 
   // ──────────────────────────────────────────────────────────
   //  HANDLER: Logout
@@ -295,13 +222,8 @@ export default function PipelinePage() {
       }
 
       // reload pipelines setelah insert
-      const { data: pipelinesData } = await supabase
-        .from('pipelines')
-        .select(PIPELINE_SELECT)
-        .eq('owner_id', userId)
-        .order('created_at', { ascending: false });
+      await reloadPipelines();
 
-      setPipelines((pipelinesData ?? []) as PipelineRow[]);
       resetForm();
       showToast('Pipeline baru berhasil disimpan.', 'success');
       setShowCreateModal(false);
@@ -460,25 +382,24 @@ export default function PipelinePage() {
       const { error } = await supabase
         .from('pipelines')
         .update({
-          product_id: editForm.product_id,
-          marketer_id: editForm.marketer_id || null,
-          customer_name: editForm.customer_name,
-          branch: editForm.branch || null,
-          class: editForm.class || null,
-          ape_idr: parsedApeIdr,
-          ape_usd: parsedApeUsd,
-          execution_plan: editForm.execution_plan,
-          quadrant: editForm.quadrant,
-          remarks: editForm.remarks || null,
-          priority_flag: editForm.priority_flag,
-          pipeline_date: editForm.pipeline_date || null,
-          status: editForm.status || 'prospecting',
-          lead_source: editForm.lead_source || 'referral',
-          expected_closing_date:
-            editForm.expected_closing_date || null,
-          last_contact_date: editForm.last_contact_date || null,
-          next_action: editForm.next_action || null,
-          risk_tag: editForm.risk_tag || null,
+        product_id: editForm.product_id,
+        marketer_id: editForm.marketer_id || null,
+        customer_name: editForm.customer_name,
+        branch: editForm.branch || null,
+        class: editForm.class || null,
+        ape_idr: parsedApeIdr,
+        ape_usd: parsedApeUsd,
+        execution_plan: editForm.execution_plan,
+        quadrant: editForm.quadrant,
+        remarks: editForm.remarks || null,
+        priority_flag: editForm.priority_flag,
+        pipeline_date: editForm.pipeline_date || null,
+        status: editForm.status || 'prospecting',
+        lead_source: editForm.lead_source || 'referral',
+        expected_closing_date: editForm.expected_closing_date || null,
+        last_contact_date: editForm.last_contact_date || null,
+        next_action: editForm.next_action || null,
+        risk_tag: editForm.risk_tag || null,
         })
         .eq('id', selectedPipeline.id)
         .eq('owner_id', userId);
@@ -489,15 +410,7 @@ export default function PipelinePage() {
       }
 
       // reload pipelines setelah update
-      const { data: pipelinesData, error: reloadError } = await supabase
-        .from('pipelines')
-        .select(PIPELINE_SELECT)
-        .eq('owner_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (!reloadError) {
-        setPipelines((pipelinesData ?? []) as PipelineRow[]);
-      }
+      await reloadPipelines();
 
       closeDetailModal();
       showToast('Perubahan berhasil disimpan.', 'success');
