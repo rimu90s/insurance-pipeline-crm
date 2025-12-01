@@ -13,11 +13,10 @@ import {
 } from '@/features/pipeline';
 
 import { supabase } from '@/lib/supabaseClient';
-import DashboardTopBar from './DashboardTopBar';
-import Toast from './Toast';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import { useAuthUser } from '../hooks/useAuthUser';
+import Link from 'next/link';
 
 // ──────────────────────────────────────────────────────────────
 //  Halaman utama Dashboard
@@ -521,37 +520,95 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <DashboardTopBar userEmail={userEmail} onLogout={logout} />
+    <div className="min-h-screen bg-slate-950/5">
+      {/* Global top bar */}
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+          {/* Brand + context */}
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-[11px] font-semibold tracking-tight text-white shadow-sm">
+              SP
+            </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-4">
-        <PipelineSummary
-          totalCount={filteredPipelines.length}
-          totalApeIdr={totalApeIdr}
-          totalApeUsd={totalApeUsd}
-          loading={loadingData}
-        />
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-semibold text-slate-900">
+                  Sales Pipeline CRM
+                </h1>
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-100">
+                  Internal beta
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Monitoring pipeline asuransi, APE, dan progres closing.
+              </p>
+            </div>
+          </div>
 
+          {/* User section */}
+          <div className="flex items-center gap-3">
+            <div className="hidden text-right sm:block">
+              <p className="text-[11px] text-slate-500">Masuk sebagai</p>
+              <p className="text-[11px] font-medium text-slate-800 truncate max-w-[180px]">
+                {userEmail}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                href="/settings"
+                className="hidden rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:inline-flex"
+              >
+                Settings
+              </Link>
+              <button
+                onClick={logout}
+                className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main className="mx-auto max-w-6xl px-4 py-5 space-y-4">
+        {/* Summary cards */}
+        <section>
+          <PipelineSummary
+            totalCount={filteredPipelines.length}
+            totalApeIdr={totalApeIdr}
+            totalApeUsd={totalApeUsd}
+            loading={loadingData}
+          />
+        </section>
+
+        {/* Data table + actions */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
+          {/* Section header */}
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
                 Data pipeline
               </h2>
               <p className="text-[11px] text-slate-500">
-                Kelola pipeline harian, filter, dan export laporan untuk
-                atasan.
+                Kelola pipeline harian, filter, dan export laporan untuk atasan.
               </p>
             </div>
-            <button
-              onClick={openCreateModal}
-              className="inline-flex items-center gap-1 rounded-lg bg-slate-900 text-white px-3 py-1.5 text-xs font-medium hover:bg-slate-800 shadow-sm"
-            >
-              <span className="text-base leading-none">＋</span>
-              <span>Tambah pipeline</span>
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={openCreateModal}
+                className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
+              >
+                <span className="text-base leading-none">＋</span>
+                <span>Tambah pipeline</span>
+              </button>
+            </div>
           </div>
 
+          {/* Table & filters */}
           <PipelineTable
             filteredPipelines={filteredPipelines}
             products={products}
@@ -581,73 +638,77 @@ export default function PipelinePage() {
         </section>
       </main>
 
+      {/* Modal create pipeline (tambah baru) */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-4 shadow-xl">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-slate-900">
-                Tambah pipeline baru
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-4 shadow-xl md:p-5">
+            <div className="mb-2 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Tambah pipeline baru
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Lengkapi data sesuai format laporan (produk, marketer, APE, kuadran, dll).
+                </p>
+              </div>
               <button
                 onClick={closeCreateModal}
-                className="text-[11px] text-slate-500 hover:text-slate-700"
+                className="text-[11px] text-slate-400 hover:text-slate-700"
               >
                 Tutup
               </button>
             </div>
 
-            <p className="text-[11px] text-slate-500 mb-3">
-              Lengkapi data sesuai format laporan (produk, marketer, APE,
-              kuadran, dll.).
-            </p>
-
-            <PipelineForm
-              products={products}
-              marketers={marketers}
-              formError={formError}
-              saving={saving}
-              productId={productId}
-              setProductId={setProductId}
-              customerName={customerName}
-              setCustomerName={setCustomerName}
-              marketerId={marketerId}
-              setMarketerId={setMarketerId}
-              branch={branch}
-              setBranch={setBranch}
-              customerClass={customerClass}
-              setCustomerClass={setCustomerClass}
-              apeIdr={apeIdr}
-              setApeIdr={setApeIdr}
-              apeUsd={apeUsd}
-              setApeUsd={setApeUsd}
-              executionPlan={executionPlan}
-              setExecutionPlan={setExecutionPlan}
-              quadrant={quadrant}
-              setQuadrant={setQuadrant}
-              pipelineDate={pipelineDate}
-              setPipelineDate={setPipelineDate}
-              remarks={remarks}
-              setRemarks={setRemarks}
-              priorityFlag={priorityFlag}
-              setPriorityFlag={setPriorityFlag}
-              onSubmit={handleSubmit}
-              status={status}
-              setStatus={setStatus}
-              leadSource={leadSource}
-              setLeadSource={setLeadSource}
-              expectedClosingDate={expectedClosingDate}
-              setExpectedClosingDate={setExpectedClosingDate}
-              lastContactDate={lastContactDate}
-              setLastContactDate={setLastContactDate}
-              nextAction={nextAction}
-              setNextAction={setNextAction}
-              riskTag={riskTag}
-              setRiskTag={setRiskTag}
-            />
+            <div className="mt-2">
+              <PipelineForm
+                products={products}
+                marketers={marketers}
+                formError={formError}
+                saving={saving}
+                productId={productId}
+                setProductId={setProductId}
+                customerName={customerName}
+                setCustomerName={setCustomerName}
+                marketerId={marketerId}
+                setMarketerId={setMarketerId}
+                branch={branch}
+                setBranch={setBranch}
+                customerClass={customerClass}
+                setCustomerClass={setCustomerClass}
+                apeIdr={apeIdr}
+                setApeIdr={setApeIdr}
+                apeUsd={apeUsd}
+                setApeUsd={setApeUsd}
+                executionPlan={executionPlan}
+                setExecutionPlan={setExecutionPlan}
+                quadrant={quadrant}
+                setQuadrant={setQuadrant}
+                pipelineDate={pipelineDate}
+                setPipelineDate={setPipelineDate}
+                remarks={remarks}
+                setRemarks={setRemarks}
+                priorityFlag={priorityFlag}
+                setPriorityFlag={setPriorityFlag}
+                onSubmit={handleSubmit}
+                status={status}
+                setStatus={setStatus}
+                leadSource={leadSource}
+                setLeadSource={setLeadSource}
+                expectedClosingDate={expectedClosingDate}
+                setExpectedClosingDate={setExpectedClosingDate}
+                lastContactDate={lastContactDate}
+                setLastContactDate={setLastContactDate}
+                nextAction={nextAction}
+                setNextAction={setNextAction}
+                riskTag={riskTag}
+                setRiskTag={setRiskTag}
+              />
+            </div>
           </div>
         </div>
       )}
 
+      {/* Modal detail / edit / delete / copy WA */}
       <PipelineDetailModal
         open={showDetailModal}
         pipeline={selectedPipeline}
@@ -667,7 +728,20 @@ export default function PipelinePage() {
         onCopyWA={copyToWhatsApp}
       />
 
-      <Toast toast={toast} />
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 right-4 z-50 rounded-xl px-4 py-3 text-xs text-white shadow-lg
+            ${
+              toast.type === 'success'
+                ? 'bg-emerald-600'
+                : 'bg-red-600'
+            }
+          `}
+        >
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }
