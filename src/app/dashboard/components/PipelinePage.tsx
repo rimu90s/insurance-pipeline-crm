@@ -4,10 +4,10 @@ import { useState, FormEvent } from 'react';
 import * as XLSX from 'xlsx';
 
 import { supabase } from '@/lib/supabaseClient';
-import PipelineSummary from './PipelineSummary';
-import PipelineForm from './PipelineForm';
-import PipelineTable from './PipelineTable';
-import PipelineDetailModal from './PipelineDetailModal';
+import PipelineSummary from '@/features/pipeline/components/PipelineSummary';
+import PipelineForm from '@/features/pipeline/components/PipelineForm';
+import PipelineTable from '@/features/pipeline/components/PipelineTable';
+import PipelineDetailModal from '@/features/pipeline/components/PipelineDetailModal';
 import DashboardTopBar from './DashboardTopBar';
 import Toast from './Toast';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
