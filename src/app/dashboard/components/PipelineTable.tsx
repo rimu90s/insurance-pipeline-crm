@@ -716,16 +716,44 @@ const prettyLeadSource = (source?: string | null) => {
           </div>
 
           {/* Status (opsional – kalau nanti mau pakai) */}
-          {/* contoh:
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-medium text-slate-600">
               Status
             </label>
-            <select ...>
-              ...
+            <select
+              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-300"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua status</option>
+              <option value="prospecting">Prospecting</option>
+              <option value="approach">Approach</option>
+              <option value="presentation">Presentation</option>
+              <option value="follow_up">Follow up</option>
+              <option value="negotiation">Negotiation</option>
+              <option value="closing">Closing</option>
+              <option value="closed_lost">Closed lost</option>
             </select>
           </div>
-          */}
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium text-slate-600">
+              Source
+            </label>
+            <select
+              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-300"
+              value={filterLeadSource}
+              onChange={(e) => setFilterLeadSource(e.target.value)}
+            >
+              <option value="all">Semua source</option>
+              <option value="referral">Referral</option>
+              <option value="bank">Bank</option>
+              <option value="digital_ads">Digital ads</option>
+              <option value="walk_in">Walk-in</option>
+              <option value="agent_referral">Agent referral</option>
+              <option value="existing_customer">Existing customer</option>
+            </select>
+          </div>
         </div>
       </div>
 
