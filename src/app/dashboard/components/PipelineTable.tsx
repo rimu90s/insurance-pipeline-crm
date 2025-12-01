@@ -49,6 +49,14 @@
 import { useState, useCallback, useMemo } from 'react';
 import { PipelineRow } from '@/types/pipeline';
 import { buildWhatsAppLineShort } from '@/utils/whatsapp';
+import {
+  formatIdr,
+  formatUsd,
+  formatDateId,
+  prettyStatus,
+  prettyLeadSource,
+} from '@/utils/format';
+
 
 /**
  * ============================================================
@@ -316,11 +324,6 @@ export default function PipelineTable({
    * ============================================================
    */
 
-  const formatIdr = (value: number | null) =>
-    value != null ? 'Rp ' + value.toLocaleString('id-ID') : '-';
-
-  const formatUsd = (value: number | null) =>
-    value != null ? '$' + value.toLocaleString('en-US') : '-';
 
   /**
    * ============================================================
@@ -342,54 +345,8 @@ export default function PipelineTable({
   }
 
   // Format tanggal jadi dd/MM/yyyy (atau "-" kalau kosong)
-const formatDate = (value?: string | null) => {
-  if (!value) return '-';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString('id-ID');
-};
 
-const prettyStatus = (status?: string | null) => {
-  if (!status) return '-';
-  switch (status) {
-    case 'prospecting':
-      return 'Prospecting';
-    case 'approach':
-      return 'Approach';
-    case 'presentation':
-      return 'Presentation';
-    case 'follow_up':
-      return 'Follow up';
-    case 'negotiation':
-      return 'Negotiation';
-    case 'closing':
-      return 'Closing';
-    case 'closed_lost':
-      return 'Closed lost';
-    default:
-      return status;
-  }
-};
 
-const prettyLeadSource = (source?: string | null) => {
-  if (!source) return '-';
-  switch (source) {
-    case 'referral':
-      return 'Referral';
-    case 'bank':
-      return 'Bank';
-    case 'digital_ads':
-      return 'Digital ads';
-    case 'walk_in':
-      return 'Walk-in';
-    case 'agent_referral':
-      return 'Agent referral';
-    case 'existing_customer':
-      return 'Existing customer';
-    default:
-      return source;
-  }
-};
 
 
   /**
@@ -871,7 +828,7 @@ const prettyLeadSource = (source?: string | null) => {
 
                         {/* Baris 2: Tanggal pipeline */}
                         <span className="text-[11px] text-slate-500">
-                          Pipeline: {formatDate(row.pipeline_date)}
+                          Pipeline: {formatDateId(row.pipeline_date)}
                         </span>
 
                         {/* Baris 3: Status + lead source */}
@@ -931,7 +888,7 @@ const prettyLeadSource = (source?: string | null) => {
                       <div className="text-[11px] text-slate-500">
                         Expected closing:{' '}
                         <span className="font-medium text-slate-700">
-                          {formatDate(row.expected_closing_date)}
+                          {formatDateId(row.expected_closing_date)}
                         </span>
                       </div>
 
@@ -939,7 +896,7 @@ const prettyLeadSource = (source?: string | null) => {
                       <div className="text-[11px] text-slate-500">
                         Last contact:{' '}
                         <span className="font-medium text-slate-700">
-                          {formatDate(row.last_contact_date)}
+                          {formatDateId(row.last_contact_date)}
                         </span>
                       </div>
                     </td>
