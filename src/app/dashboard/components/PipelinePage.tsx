@@ -512,19 +512,22 @@ export default function PipelinePage() {
   // ──────────────────────────────────────────────────────────
   //  RENDER
   // ──────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────
+  //  RENDER
+  // ──────────────────────────────────────────────────────────
 
   if (loadingUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100">
         <p className="text-sm text-slate-600">Memuat dashboard…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950/5">
-      {/* Global top bar */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur">
+    <div className="min-h-screen">
+      {/* Top bar */}
+      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           {/* Brand + context */}
           <div className="flex items-center gap-3">
@@ -537,12 +540,12 @@ export default function PipelinePage() {
                 <h1 className="text-sm font-semibold text-slate-900">
                   Sales Pipeline CRM
                 </h1>
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-100">
-                  Internal beta
+                <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-[2px] text-[10px] font-medium text-emerald-700">
+                  Private beta
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
-                Monitoring pipeline asuransi, APE, dan progres closing.
+                Monitoring pipeline asuransi, APE, dan progres closing harian.
               </p>
             </div>
           </div>
@@ -551,18 +554,12 @@ export default function PipelinePage() {
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <p className="text-[11px] text-slate-500">Masuk sebagai</p>
-              <p className="text-[11px] font-medium text-slate-800 truncate max-w-[180px]">
+              <p className="max-w-[200px] truncate text-[11px] font-medium text-slate-800">
                 {userEmail}
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              <Link
-                href="/settings"
-                className="hidden rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:inline-flex"
-              >
-                Settings
-              </Link>
               <button
                 onClick={logout}
                 className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
@@ -575,78 +572,95 @@ export default function PipelinePage() {
       </header>
 
       {/* Main content */}
-      <main className="mx-auto max-w-6xl px-4 py-5 space-y-4">
-        {/* Summary cards */}
-        <section>
-          <PipelineSummary
-            totalCount={filteredPipelines.length}
-            totalApeIdr={totalApeIdr}
-            totalApeUsd={totalApeUsd}
-            loading={loadingData}
-          />
-        </section>
+      <main className="mx-auto max-w-6xl px-4 py-5">
+        <div className="space-y-5">
+          {/* Summary cards */}
+          <section className="rounded-2xl border border-white/60 bg-white/80 p-3 shadow-[0_20px_45px_rgba(15,23,42,0.08)] backdrop-blur">
+            <PipelineSummary
+              totalCount={filteredPipelines.length}
+              totalApeIdr={totalApeIdr}
+              totalApeUsd={totalApeUsd}
+              loading={loadingData}
+            />
+          </section>
 
-        {/* Data table + actions */}
-        <section className="space-y-3">
-          {/* Section header */}
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                Data pipeline
-              </h2>
-              <p className="text-[11px] text-slate-500">
-                Kelola pipeline harian, filter, dan export laporan untuk atasan.
-              </p>
+          {/* Data table + actions */}
+          <section className="space-y-3 rounded-2xl border border-white/60 bg-white/90 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur">
+            {/* Section header */}
+            <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Data pipeline
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Kelola pipeline harian, filter, dan export laporan untuk atasan.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={openCreateModal}
+                  className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
+                >
+                  <span className="text-base leading-none">＋</span>
+                  <span>Tambah pipeline</span>
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={openCreateModal}
-                className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
-              >
-                <span className="text-base leading-none">＋</span>
-                <span>Tambah pipeline</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Table & filters */}
-          <PipelineTable
-            filteredPipelines={filteredPipelines}
-            products={products}
-            marketers={marketers}
-            loading={loadingData}
-            filterProductId={filterProductId}
-            setFilterProductId={setFilterProductId}
-            filterPlan={filterPlan}
-            setFilterPlan={setFilterPlan}
-            filterQuadrant={filterQuadrant}
-            setFilterQuadrant={setFilterQuadrant}
-            filterMarketerId={filterMarketerId}
-            setFilterMarketerId={setFilterMarketerId}
-            filterPriority={filterPriority}
-            setFilterPriority={setFilterPriority}
-            filterStatus={filterStatus}
-            setFilterStatus={setFilterStatus}
-            filterLeadSource={filterLeadSource}
-            setFilterLeadSource={setFilterLeadSource}
-            exportExcel={exportExcel}
-            openDetailModal={openDetailModal}
-            onEditRow={handleEditFromTable}
-            onDeleteRow={handleDeleteFromTable}
-            onCopyWARow={copyShortFromTable}
-            onResetFilters={resetFilters}
-          />
-        </section>
+            {/* Table & filters */}
+            <PipelineTable
+              filteredPipelines={filteredPipelines}
+              products={products}
+              marketers={marketers}
+              loading={loadingData}
+              filterProductId={filterProductId}
+              setFilterProductId={setFilterProductId}
+              filterPlan={filterPlan}
+              setFilterPlan={setFilterPlan}
+              filterQuadrant={filterQuadrant}
+              setFilterQuadrant={setFilterQuadrant}
+              filterMarketerId={filterMarketerId}
+              setFilterMarketerId={setFilterMarketerId}
+              filterPriority={filterPriority}
+              setFilterPriority={setFilterPriority}
+              filterStatus={filterStatus}
+              setFilterStatus={setFilterStatus}
+              filterLeadSource={filterLeadSource}
+              setFilterLeadSource={setFilterLeadSource}
+              exportExcel={exportExcel}
+              openDetailModal={openDetailModal}
+              onEditRow={handleEditFromTable}
+              onDeleteRow={handleDeleteFromTable}
+              onCopyWARow={copyShortFromTable}
+              onResetFilters={resetFilters}
+            />
+          </section>
+        </div>
       </main>
 
-            {/* Modal create pipeline (tambah baru) */}
-      <Modal
-        open={showCreateModal}
-        title="Tambah pipeline baru"
-        description="Lengkapi data sesuai format laporan (produk, marketer, APE, kuadran, dll)."
-        onClose={closeCreateModal}
-      >
+      {/* Modal create pipeline (tambah baru) */}
+      {showCreateModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+    <div className="w-full max-w-xl rounded-2xl bg-white p-4 shadow-2xl md:p-5 max-h-[calc(100vh-3rem)] overflow-y-auto">
+      <div className="mb-2 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">
+            Tambah pipeline baru
+          </h3>
+          <p className="text-[11px] text-slate-500">
+            Lengkapi data sesuai format laporan (produk, marketer, APE, kuadran, dll).
+          </p>
+        </div>
+        <button
+          onClick={closeCreateModal}
+          className="text-[11px] text-slate-400 hover:text-slate-700"
+        >
+          Tutup
+        </button>
+      </div>
+
+      <div className="mt-2">
         <PipelineForm
           products={products}
           marketers={marketers}
@@ -690,7 +704,10 @@ export default function PipelinePage() {
           riskTag={riskTag}
           setRiskTag={setRiskTag}
         />
-      </Modal>
+      </div>
+    </div>
+  </div>
+)}
 
 
       {/* Modal detail / edit / delete / copy WA */}
@@ -718,15 +735,22 @@ export default function PipelinePage() {
         <div
           className={`fixed bottom-4 right-4 z-50 rounded-xl px-4 py-3 text-xs text-white shadow-lg
             ${
-              toast.type === 'success'
+              toast!.type === 'success'
                 ? 'bg-emerald-600'
                 : 'bg-red-600'
             }
           `}
         >
-          {toast.message}
+          {toast!.message}
         </div>
       )}
     </div>
   );
 }
+
+  
+
+  
+
+  
+
