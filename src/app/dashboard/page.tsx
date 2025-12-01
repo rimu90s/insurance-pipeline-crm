@@ -2,6 +2,7 @@
 
 import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import * as XLSX from 'xlsx';
 
 import { supabase } from '@/lib/supabaseClient';
@@ -10,16 +11,36 @@ import PipelineForm from './components/PipelineForm';
 import PipelineTable from './components/PipelineTable';
 import PipelineDetailModal from './components/PipelineDetailModal';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
-import Link from 'next/link';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
+
 const FILTER_KEY = 'sales-pipeline-filters-v1';
 
+// Query select untuk pipelines (dipakai di beberapa tempat)
+const PIPELINE_SELECT = `
+  id,
+  product_id,
+  marketer_id,
+  customer_name,
+  branch,
+  class,
+  ape_idr,
+  ape_usd,
+  execution_plan,
+  quadrant,
+  remarks,
+  priority_flag,
+  pipeline_date,
+  status,
+  lead_source,
+  expected_closing_date,
+  last_contact_date,
+  next_action,
+  risk_tag
+`;
 
-//
 // ──────────────────────────────────────────────────────────────
 //  Tipe lokal untuk data dropdown (produk & marketer)
 // ──────────────────────────────────────────────────────────────
-//
 
 type Product = {
   id: string;
@@ -32,53 +53,40 @@ type Marketer = {
   branch: string | null;
 };
 
-//
 // ──────────────────────────────────────────────────────────────
 //  Halaman utama Dashboard
 // ──────────────────────────────────────────────────────────────
-//
 
 export default function DashboardPage() {
   const router = useRouter();
 
-  //
   // 1. STATE: Auth & user
   //    - cek user login
   //    - simpan email & id untuk owner_id dan nama file export
-  //
   const [loadingUser, setLoadingUser] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
-  //
   // 2. STATE: Master data & pipelines
-  //
   const [products, setProducts] = useState<Product[]>([]);
   const [marketers, setMarketers] = useState<Marketer[]>([]);
   const [pipelines, setPipelines] = useState<PipelineRow[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
 
-  //
   // 3a. STATE: Modal create pipeline (tambah baru)
-  //
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  //
   // 3b. STATE: Modal detail & edit pipeline
-  //
   const [selectedPipeline, setSelectedPipeline] =
     useState<PipelineRow | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState<PipelineEditForm | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  //
-  // 4. STATE: Filter list pipeline
-  //    - filterProductId & filterQuadrant dipakai di PipelineTable
-  //
+  // 4. STATE: Filter list pipeline (untuk table & summary)
   const [filterProductId, setFilterProductId] = useState<string>('all');
   const [filterQuadrant, setFilterQuadrant] = useState<string>('all');
   const [filterPlan, setFilterPlan] = useState<string>('all');
@@ -87,56 +95,7 @@ export default function DashboardPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterLeadSource, setFilterLeadSource] = useState<string>('all');
 
-
-
-    // LOAD FILTER from localStorage (sekali saat awal)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(FILTER_KEY);
-      if (!raw) return;
-
-      const saved = JSON.parse(raw) as {
-        productId?: string;
-        plan?: string;
-        quadrant?: string;
-        marketerId?: string;
-        priority?: string;
-      };
-
-      if (saved.productId) setFilterProductId(saved.productId);
-      if (saved.plan) setFilterPlan(saved.plan);
-      if (saved.quadrant) setFilterQuadrant(saved.quadrant);
-      if (saved.marketerId) setFilterMarketerId(saved.marketerId);
-      if (saved.priority) setFilterPriority(saved.priority);
-    } catch (e) {
-      console.error('Failed to load filters', e);
-    }
-  }, []);
-
-
-
-    // simpan filter ke localStorage setiap kali berubah
-  useEffect(() => {
-    const payload = {
-      productId: filterProductId,
-      plan: filterPlan,
-      quadrant: filterQuadrant,
-      marketerId: filterMarketerId,
-      priority: filterPriority,
-    };
-
-    try {
-      localStorage.setItem(FILTER_KEY, JSON.stringify(payload));
-    } catch (e) {
-      console.error('Failed to save filters', e);
-    }
-  }, [filterProductId, filterPlan, filterQuadrant, filterMarketerId, filterPriority]);
-
-
-
-  //
   // 5. STATE: Form create pipeline (dipass ke PipelineForm)
-  //
   const [productId, setProductId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [marketerId, setMarketerId] = useState('');
@@ -150,18 +109,17 @@ export default function DashboardPage() {
   const [priorityFlag, setPriorityFlag] = useState(false);
   const [pipelineDate, setPipelineDate] = useState<string>('');
 
-  const [status, setStatus] = useState<string>('prospecting');        // default
-  const [leadSource, setLeadSource] = useState<string>('referral');   // default
-  const [expectedClosingDate, setExpectedClosingDate] = useState<string>(''); // YYYY-MM-DD
-  const [lastContactDate, setLastContactDate] = useState<string>('');        // YYYY-MM-DD
+  // field tambahan (status, lead source, dll)
+  const [status, setStatus] = useState<string>('prospecting');
+  const [leadSource, setLeadSource] = useState<string>('referral');
+  const [expectedClosingDate, setExpectedClosingDate] =
+    useState<string>(''); // YYYY-MM-DD
+  const [lastContactDate, setLastContactDate] = useState<string>(''); // YYYY-MM-DD
   const [nextAction, setNextAction] = useState<string>('');
   const [riskTag, setRiskTag] = useState<string>('');
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  
-    // Loading state untuk table dan summary
-  const [loadingData, setLoadingData] = useState(true);
 
   // Toast kecil untuk notifikasi
   const [toast, setToast] = useState<{
@@ -177,12 +135,61 @@ export default function DashboardPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // ──────────────────────────────────────────────────────────
+  //  EFFECT: Load filter dari localStorage (sekali saat awal)
+  // ──────────────────────────────────────────────────────────
 
-  //
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FILTER_KEY);
+      if (!raw) return;
+
+      const saved = JSON.parse(raw) as {
+        productId?: string;
+        plan?: string;
+        quadrant?: string;
+        marketerId?: string;
+        priority?: string;
+        // (bisa ditambah status / leadsource ke depannya)
+      };
+
+      if (saved.productId) setFilterProductId(saved.productId);
+      if (saved.plan) setFilterPlan(saved.plan);
+      if (saved.quadrant) setFilterQuadrant(saved.quadrant);
+      if (saved.marketerId) setFilterMarketerId(saved.marketerId);
+      if (saved.priority) setFilterPriority(saved.priority);
+    } catch (e) {
+      console.error('Failed to load filters', e);
+    }
+  }, []);
+
+  // Simpan filter ke localStorage setiap kali berubah
+  useEffect(() => {
+    const payload = {
+      productId: filterProductId,
+      plan: filterPlan,
+      quadrant: filterQuadrant,
+      marketerId: filterMarketerId,
+      priority: filterPriority,
+    };
+
+    try {
+      localStorage.setItem(FILTER_KEY, JSON.stringify(payload));
+    } catch (e) {
+      console.error('Failed to save filters', e);
+    }
+  }, [
+    filterProductId,
+    filterPlan,
+    filterQuadrant,
+    filterMarketerId,
+    filterPriority,
+  ]);
+
   // ──────────────────────────────────────────────────────────
-  //  EFFECT 1: Cek user login (redirect ke /auth kalau belum login)
+  //  EFFECT 1: Cek user login (redirect ke /auth kalau belum)
   // ──────────────────────────────────────────────────────────
-  //
+
   useEffect(() => {
     const init = async () => {
       const { data, error } = await supabase.auth.getUser();
@@ -200,79 +207,58 @@ export default function DashboardPage() {
     init();
   }, [router]);
 
-  //
   // ──────────────────────────────────────────────────────────
   //  EFFECT 2: Fetch products, marketers, dan pipelines
-  //            setelah userId sudah diketahui
+  //            setelah userId diketahui
   // ──────────────────────────────────────────────────────────
-  //
-useEffect(() => {
-  if (!userId) return;
 
-  const fetchAll = async () => {
-    setLoadingData(true);
-    try {
-      const [
-        { data: productsData },
-        { data: marketersData },
-        { data: pipelinesData },
-      ] = await Promise.all([
-        supabase.from('products').select('id, name').order('name'),
-        supabase.from('marketers').select('id, name, branch').order('name'),
-        supabase
-          .from('pipelines')
-          .select(`
-            id,
-            product_id,
-            marketer_id,
-            customer_name,
-            branch,
-            class,
-            ape_idr,
-            ape_usd,
-            execution_plan,
-            quadrant,
-            remarks,
-            priority_flag,
-            pipeline_date,
-            status,
-            lead_source,
-            expected_closing_date,
-            last_contact_date,
-            next_action,
-            risk_tag
-          `)
-          .eq('owner_id', userId)
-          .order('created_at', { ascending: false }),
-      ]);
+  useEffect(() => {
+    if (!userId) return;
 
-      setProducts(productsData ?? []);
-      setMarketers(marketersData ?? []);
-      setPipelines((pipelinesData ?? []) as PipelineRow[]);
-    } finally {
-      setLoadingData(false);
-    }
-  };
+    const fetchAll = async () => {
+      setLoadingData(true);
 
-  fetchAll();
-}, [userId]);
+      try {
+        const [
+          { data: productsData },
+          { data: marketersData },
+          { data: pipelinesData },
+        ] = await Promise.all([
+          supabase.from('products').select('id, name').order('name'),
+          supabase.from('marketers')
+            .select('id, name, branch')
+            .order('name'),
+          supabase
+            .from('pipelines')
+            .select(PIPELINE_SELECT)
+            .eq('owner_id', userId)
+            .order('created_at', { ascending: false }),
+        ]);
 
+        setProducts(productsData ?? []);
+        setMarketers(marketersData ?? []);
+        setPipelines((pipelinesData ?? []) as PipelineRow[]);
+      } finally {
+        setLoadingData(false);
+      }
+    };
 
-  //
+    fetchAll();
+  }, [userId]);
+
   // ──────────────────────────────────────────────────────────
   //  HANDLER: Logout
   // ──────────────────────────────────────────────────────────
-  //
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/auth');
   };
 
-  //
   // ──────────────────────────────────────────────────────────
   //  UTIL: Reset form create pipeline
   // ──────────────────────────────────────────────────────────
-  //
+
   const resetForm = () => {
     setProductId('');
     setCustomerName('');
@@ -296,15 +282,13 @@ useEffect(() => {
     setRiskTag('');
   };
 
-  //
   // ──────────────────────────────────────────────────────────
   //  HANDLER: Submit form create pipeline
   //           - insert ke Supabase
-  //           - reload data pipelines
-  //           - reset form
-  //           - tutup modal setelah sukses
+  //           - reload pipelines
+  //           - reset form & tutup modal
   // ──────────────────────────────────────────────────────────
-  //
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormError(null);
@@ -355,46 +339,23 @@ useEffect(() => {
       // reload pipelines setelah insert
       const { data: pipelinesData } = await supabase
         .from('pipelines')
-        .select(
-          `
-          id,
-          product_id,
-          marketer_id,
-          customer_name,
-          branch,
-          class,
-          ape_idr,
-          ape_usd,
-          execution_plan,
-          quadrant,
-          remarks,
-          priority_flag,
-          pipeline_date,
-          status,
-          lead_source,
-          expected_closing_date,
-          last_contact_date,
-          next_action,
-          risk_tag
-        `
-        )
+        .select(PIPELINE_SELECT)
         .eq('owner_id', userId)
         .order('created_at', { ascending: false });
 
       setPipelines((pipelinesData ?? []) as PipelineRow[]);
       resetForm();
       showToast('Pipeline baru berhasil disimpan.', 'success');
-      setShowCreateModal(false); // auto-tutup modal setelah sukses
+      setShowCreateModal(false);
     } finally {
       setSaving(false);
     }
   };
 
-  //
   // ──────────────────────────────────────────────────────────
-  //  UTIL: Helper untuk ambil nama produk & marketer dari id
+  //  UTIL: Helper nama produk & marketer dari id
   // ──────────────────────────────────────────────────────────
-  //
+
   const getProductName = (product_id: string) => {
     const product = products.find((prod) => prod.id === product_id);
     return product ? product.name : '-';
@@ -406,64 +367,67 @@ useEffect(() => {
     return marketer ? marketer.name : '-';
   };
 
-  //
   // ──────────────────────────────────────────────────────────
   //  DERIVED STATE: filteredPipelines + total APE
   // ──────────────────────────────────────────────────────────
-  //
+
   const filteredPipelines = pipelines.filter((row) => {
-  // Produk
-  const matchProduct =
-    filterProductId === 'all' ? true : row.product_id === filterProductId;
+    // Produk
+    const matchProduct =
+      filterProductId === 'all' ? true : row.product_id === filterProductId;
 
-  // Plan (week 1–4)
-  const matchPlan =
-    filterPlan === 'all'
-      ? true
-      : (row.execution_plan ?? '').toLowerCase() === filterPlan.toLowerCase();
+    // Plan (week 1–4)
+    const matchPlan =
+      filterPlan === 'all'
+        ? true
+        : (row.execution_plan ?? '').toLowerCase() ===
+          filterPlan.toLowerCase();
 
-  // Quadrant (k1–k4)
-  const matchQuadrant =
-    filterQuadrant === 'all'
-      ? true
-      : (row.quadrant ?? '').toLowerCase() === filterQuadrant.toLowerCase();
+    // Quadrant (k1–k4)
+    const matchQuadrant =
+      filterQuadrant === 'all'
+        ? true
+        : (row.quadrant ?? '').toLowerCase() ===
+          filterQuadrant.toLowerCase();
 
-  // Marketer
-  const matchMarketer =
-    filterMarketerId === 'all'
-      ? true
-      : (row.marketer_id ?? '') === filterMarketerId;
+    // Marketer
+    const matchMarketer =
+      filterMarketerId === 'all'
+        ? true
+        : (row.marketer_id ?? '') === filterMarketerId;
 
-  // Prioritas
-  const matchPriority =
-    filterPriority === 'all'
-      ? true
-      : filterPriority === 'prio'
-      ? !!row.priority_flag
-      : !row.priority_flag;
+    // Prioritas
+    const matchPriority =
+      filterPriority === 'all'
+        ? true
+        : filterPriority === 'prio'
+        ? !!row.priority_flag
+        : !row.priority_flag;
 
-  // ✅ Status (baru)
-  const matchStatus =
-    filterStatus === 'all'
-      ? true
-      : (row.status ?? '').toLowerCase() === filterStatus.toLowerCase();
+    // Status
+    const matchStatus =
+      filterStatus === 'all'
+        ? true
+        : (row.status ?? '').toLowerCase() ===
+          filterStatus.toLowerCase();
 
-  // ✅ Lead source (baru)
-  const matchLeadSource =
-    filterLeadSource === 'all'
-      ? true
-      : (row.lead_source ?? '').toLowerCase() === filterLeadSource.toLowerCase();
+    // Lead source
+    const matchLeadSource =
+      filterLeadSource === 'all'
+        ? true
+        : (row.lead_source ?? '').toLowerCase() ===
+          filterLeadSource.toLowerCase();
 
-  return (
-    matchProduct &&
-    matchPlan &&
-    matchQuadrant &&
-    matchMarketer &&
-    matchPriority &&
-    matchStatus &&
-    matchLeadSource
-  );
-});
+    return (
+      matchProduct &&
+      matchPlan &&
+      matchQuadrant &&
+      matchMarketer &&
+      matchPriority &&
+      matchStatus &&
+      matchLeadSource
+    );
+  });
 
   const totalApeIdr = filteredPipelines.reduce(
     (acc, row) => acc + (row.ape_idr ?? 0),
@@ -474,11 +438,10 @@ useEffect(() => {
     0
   );
 
-  //
   // ──────────────────────────────────────────────────────────
-  //  HANDLER: Export ke Excel (format sesuai contoh klien)
+  //  HANDLER: Export ke Excel (format sesuai laporan)
   // ──────────────────────────────────────────────────────────
-  //
+
   const exportExcel = () => {
     if (filteredPipelines.length === 0) {
       alert('Tidak ada data pipeline untuk diexport (periksa filter).');
@@ -521,39 +484,33 @@ useEffect(() => {
     XLSX.writeFile(wb, filename);
   };
 
-  //
   // ──────────────────────────────────────────────────────────
-  //  HANDLER: Modal create (buka / tutup)
+  //  HANDLER: Modal create (buka / tutup) & reset filter
   // ──────────────────────────────────────────────────────────
-  //
+
   const openCreateModal = () => {
-    resetForm();           // pastikan form bersih tiap kali buka modal
+    resetForm();
     setShowCreateModal(true);
   };
 
-  // ──────────────────────────────────────────────────────────
-  //  HANDLER: Reset Filter
-  // ──────────────────────────────────────────────────────────
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+  };
+
   const resetFilters = () => {
     setFilterProductId('all');
     setFilterPlan('all');
     setFilterQuadrant('all');
     setFilterMarketerId('all');
     setFilterPriority('all');
-    setFilterStatus('all');    
+    setFilterStatus('all');
     setFilterLeadSource('all');
   };
 
-
-  const closeCreateModal = () => {
-    setShowCreateModal(false);
-  };
-
-  //
   // ──────────────────────────────────────────────────────────
   //  HANDLER: Modal detail (open / close / edit / delete)
   // ──────────────────────────────────────────────────────────
-  //
+
   const openDetailModal = (row: PipelineRow) => {
     setSelectedPipeline(row);
     setShowDetailModal(true);
@@ -572,8 +529,10 @@ useEffect(() => {
 
   const startEdit = () => {
     if (!selectedPipeline) return;
+
     setEditMode(true);
     setEditError(null);
+
     setEditForm({
       product_id: selectedPipeline.product_id,
       marketer_id: selectedPipeline.marketer_id ?? '',
@@ -593,7 +552,8 @@ useEffect(() => {
       pipeline_date: selectedPipeline.pipeline_date ?? '',
       status: selectedPipeline.status ?? 'prospecting',
       lead_source: selectedPipeline.lead_source ?? 'referral',
-      expected_closing_date: selectedPipeline.expected_closing_date ?? '',
+      expected_closing_date:
+        selectedPipeline.expected_closing_date ?? '',
       last_contact_date: selectedPipeline.last_contact_date ?? '',
       next_action: selectedPipeline.next_action ?? '',
       risk_tag: selectedPipeline.risk_tag ?? '',
@@ -637,7 +597,8 @@ useEffect(() => {
           pipeline_date: editForm.pipeline_date || null,
           status: editForm.status || 'prospecting',
           lead_source: editForm.lead_source || 'referral',
-          expected_closing_date: editForm.expected_closing_date || null,
+          expected_closing_date:
+            editForm.expected_closing_date || null,
           last_contact_date: editForm.last_contact_date || null,
           next_action: editForm.next_action || null,
           risk_tag: editForm.risk_tag || null,
@@ -653,29 +614,7 @@ useEffect(() => {
       // reload pipelines setelah update
       const { data: pipelinesData, error: reloadError } = await supabase
         .from('pipelines')
-        .select(
-          `
-          id,
-          product_id,
-          marketer_id,
-          customer_name,
-          branch,
-          class,
-          ape_idr,
-          ape_usd,
-          execution_plan,
-          quadrant,
-          remarks,
-          priority_flag,
-          pipeline_date,
-          status,
-          lead_source,
-          expected_closing_date,
-          last_contact_date,
-          next_action,
-          risk_tag
-        `
-        )
+        .select(PIPELINE_SELECT)
         .eq('owner_id', userId)
         .order('created_at', { ascending: false });
 
@@ -712,7 +651,7 @@ useEffect(() => {
         return;
       }
 
-      // Hapus juga dari state lokal agar tabel langsung ter-update
+      // Hapus juga dari state lokal agar tabel langsung update
       setPipelines((prev) =>
         prev.filter((row) => row.id !== selectedPipeline.id)
       );
@@ -723,48 +662,47 @@ useEffect(() => {
     }
   };
 
-  //
   // ──────────────────────────────────────────────────────────
   //  HANDLER: Copy format laporan ke WhatsApp (clipboard)
   // ──────────────────────────────────────────────────────────
-  //
+
   const copyToWhatsApp = () => {
-  if (!selectedPipeline) return;
+    if (!selectedPipeline) return;
 
-  const product = getProductName(selectedPipeline.product_id);
-  const marketer = getMarketerName(selectedPipeline.marketer_id);
+    const product = getProductName(selectedPipeline.product_id);
+    const marketer = getMarketerName(selectedPipeline.marketer_id);
 
-  const msg = buildWhatsAppMessage(
-    selectedPipeline,
-    product,
-    marketer,
-    'full' // modal detail = format lengkap
-  );
+    const msg = buildWhatsAppMessage(
+      selectedPipeline,
+      product,
+      marketer,
+      'full' // modal detail = format lengkap
+    );
 
-  navigator.clipboard.writeText(msg);
-  showToast('Pesan pipeline (full) sudah disalin.', 'success');
-};
-
+    navigator.clipboard.writeText(msg);
+    showToast('Pesan pipeline (full) sudah disalin.', 'success');
+  };
 
   const copyShortFromTable = (row: PipelineRow) => {
     const product = getProductName(row.product_id);
     const marketer = getMarketerName(row.marketer_id);
 
-    const message = buildWhatsAppMessage(row, product, marketer, 'short');
+    const message = buildWhatsAppMessage(
+      row,
+      product,
+      marketer,
+      'short'
+    );
 
     navigator.clipboard.writeText(message);
     showToast('Pesan pipeline (ringkas) sudah disalin.', 'success');
   };
 
-
-
-    //
   // ──────────────────────────────────────────────────────────
   //  HANDLER: Aksi langsung dari tabel (icon di kolom Action)
   // ──────────────────────────────────────────────────────────
-  //
+
   const handleEditFromTable = (row: PipelineRow) => {
-    // Buka modal langsung dalam mode EDIT dengan data row
     setSelectedPipeline(row);
     setShowDetailModal(true);
     setEditMode(true);
@@ -815,11 +753,10 @@ useEffect(() => {
     }
   };
 
-  //
   // ──────────────────────────────────────────────────────────
   //  RENDER: Loading state
   // ──────────────────────────────────────────────────────────
-  //
+
   if (loadingUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
@@ -828,11 +765,10 @@ useEffect(() => {
     );
   }
 
-  //
   // ──────────────────────────────────────────────────────────
   //  RENDER: Layout utama dashboard
   // ──────────────────────────────────────────────────────────
-  //
+
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Top bar */}
@@ -894,7 +830,8 @@ useEffect(() => {
                 Data pipeline
               </h2>
               <p className="text-[11px] text-slate-500">
-                Kelola pipeline harian, filter, dan export laporan untuk atasan.
+                Kelola pipeline harian, filter, dan export laporan untuk
+                atasan.
               </p>
             </div>
             <button
@@ -911,8 +848,7 @@ useEffect(() => {
             filteredPipelines={filteredPipelines}
             products={products}
             marketers={marketers}
-            loading={false} // atau loadingData kalau kamu punya state itu
-
+            loading={loadingData}
             filterProductId={filterProductId}
             setFilterProductId={setFilterProductId}
             filterPlan={filterPlan}
@@ -923,12 +859,10 @@ useEffect(() => {
             setFilterMarketerId={setFilterMarketerId}
             filterPriority={filterPriority}
             setFilterPriority={setFilterPriority}
-
             filterStatus={filterStatus}
             setFilterStatus={setFilterStatus}
             filterLeadSource={filterLeadSource}
             setFilterLeadSource={setFilterLeadSource}
-
             exportExcel={exportExcel}
             openDetailModal={openDetailModal}
             onEditRow={handleEditFromTable}
@@ -936,7 +870,6 @@ useEffect(() => {
             onCopyWARow={copyShortFromTable}
             onResetFilters={resetFilters}
           />
-
         </section>
       </main>
 
@@ -957,7 +890,8 @@ useEffect(() => {
             </div>
 
             <p className="text-[11px] text-slate-500 mb-3">
-              Lengkapi data sesuai format laporan (produk, marketer, APE, kuadran, dll.).
+              Lengkapi data sesuai format laporan (produk, marketer, APE,
+              kuadran, dll.).
             </p>
 
             <PipelineForm
@@ -1031,13 +965,16 @@ useEffect(() => {
       {toast && (
         <div
           className={`fixed bottom-4 right-4 px-4 py-3 rounded-xl shadow-lg text-xs text-white z-50
-            ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}
+            ${
+              toast.type === 'success'
+                ? 'bg-emerald-600'
+                : 'bg-red-600'
+            }
           `}
         >
           {toast.message}
         </div>
       )}
-
     </div>
   );
 }
