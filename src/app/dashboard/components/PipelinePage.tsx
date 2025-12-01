@@ -16,8 +16,6 @@ import { supabase } from '@/lib/supabaseClient';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import { useAuthUser } from '../hooks/useAuthUser';
-import Link from 'next/link';
-import Modal from '@/components/ui/Modal';
 
 
 // ──────────────────────────────────────────────────────────────

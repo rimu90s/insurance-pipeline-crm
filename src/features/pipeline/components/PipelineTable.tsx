@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState, type ChangeEvent } from 'react';
+import React from 'react';
 import { PipelineRow } from '@/types/pipeline';
 
-// Tipe sederhana untuk dropdown
+// Tipe lokal untuk data dropdown
 type Product = {
   id: string;
   name: string;
@@ -15,618 +15,391 @@ type Marketer = {
   branch: string | null;
 };
 
-type PipelineTableProps = {
+// Helper sederhana (tanpa bergantung utils lain)
+const formatCurrencyIdr = (value?: number | null) => {
+  if (!value || value <= 0) return '-';
+  return `Rp ${value.toLocaleString('id-ID')}`;
+};
+
+const formatCurrencyUsd = (value?: number | null) => {
+  if (!value || value <= 0) return '$0';
+  return `$ ${value.toLocaleString('en-US')}`;
+};
+
+const prettyPlan = (plan?: string | null) => {
+  if (!plan) return '-';
+  const lower = plan.toLowerCase();
+  if (lower.startsWith('week 1')) return 'Week 1';
+  if (lower.startsWith('week 2')) return 'Week 2';
+  if (lower.startsWith('week 3')) return 'Week 3';
+  if (lower.startsWith('week 4')) return 'Week 4';
+  return plan;
+};
+
+const prettyQuadrant = (q?: string | null) => {
+  if (!q) return '-';
+  const lower = q.toLowerCase();
+  if (lower === 'k1') return 'K1';
+  if (lower === 'k2') return 'K2';
+  if (lower === 'k3') return 'K3';
+  if (lower === 'k4') return 'K4';
+  return q.toUpperCase();
+};
+
+const statusBadgeClass = (status?: string | null) => {
+  const s = (status || '').toLowerCase();
+  if (!s || s === 'prospecting') {
+    return 'bg-sky-50 text-sky-700 border-sky-100';
+  }
+  if (s.includes('follow')) {
+    return 'bg-amber-50 text-amber-700 border-amber-100';
+  }
+  if (s.includes('won') || s.includes('deal')) {
+    return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  }
+  if (s.includes('lost') || s.includes('drop')) {
+    return 'bg-rose-50 text-rose-700 border-rose-100';
+  }
+  return 'bg-slate-50 text-slate-700 border-slate-100';
+};
+
+const priorityBadge = (flag?: boolean | null) => {
+  if (!flag) {
+    return (
+      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-[2px] text-[10px] font-medium text-slate-600">
+        Normal
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-[2px] text-[10px] font-semibold text-amber-700">
+      PRIORITAS
+    </span>
+  );
+};
+
+interface Props {
   filteredPipelines: PipelineRow[];
   products: Product[];
   marketers: Marketer[];
   loading: boolean;
 
-  // filters
   filterProductId: string;
-  setFilterProductId: (value: string) => void;
+  setFilterProductId: (v: string) => void;
+
   filterPlan: string;
-  setFilterPlan: (value: string) => void;
+  setFilterPlan: (v: string) => void;
+
   filterQuadrant: string;
-  setFilterQuadrant: (value: string) => void;
+  setFilterQuadrant: (v: string) => void;
+
   filterMarketerId: string;
-  setFilterMarketerId: (value: string) => void;
+  setFilterMarketerId: (v: string) => void;
+
   filterPriority: string;
-  setFilterPriority: (value: string) => void;
+  setFilterPriority: (v: string) => void;
+
   filterStatus: string;
-  setFilterStatus: (value: string) => void;
+  setFilterStatus: (v: string) => void;
+
   filterLeadSource: string;
-  setFilterLeadSource: (value: string) => void;
+  setFilterLeadSource: (v: string) => void;
 
   exportExcel: () => void;
-  openDetailModal: (row: PipelineRow) => void;
+
   onEditRow: (row: PipelineRow) => void;
   onDeleteRow: (row: PipelineRow) => void;
+  openDetailModal: (row: PipelineRow) => void;
   onCopyWARow: (row: PipelineRow) => void;
+
   onResetFilters: () => void;
-};
+}
 
-const pageSize = 25;
+export default function PipelineTable({
+  filteredPipelines,
+  products,
+  marketers,
+  loading,
 
-// ──────────────────────────────
-// Helper format lokal
-// ──────────────────────────────
+  filterProductId,
+  setFilterProductId,
 
-const formatCurrencyIdr = (value: number) => {
-  if (!value) return 'Rp 0';
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(value);
-};
+  filterPlan,
+  setFilterPlan,
 
-const formatCurrencyUsd = (value: number) => {
-  if (!value) return '$0';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 2,
-  }).format(value);
-};
+  filterQuadrant,
+  setFilterQuadrant,
 
-const prettyPlan = (plan: string) => {
-  switch (plan?.toLowerCase()) {
-    case 'week 1':
-      return 'Week 1';
-    case 'week 2':
-      return 'Week 2';
-    case 'week 3':
-      return 'Week 3';
-    case 'week 4':
-      return 'Week 4';
-    default:
-      return plan || '-';
-  }
-};
+  filterMarketerId,
+  setFilterMarketerId,
 
-const prettyQuadrant = (q: string) => {
-  const key = q?.toLowerCase();
-  if (!key) return '-';
-  switch (key) {
-    case 'k1':
-      return 'K1';
-    case 'k2':
-      return 'K2';
-    case 'k3':
-      return 'K3';
-    case 'k4':
-      return 'K4';
-    default:
-      return q;
-  }
-};
+  filterPriority,
+  setFilterPriority,
 
-const prettyPriority = (flag: boolean) => (flag ? 'Prioritas' : 'Normal');
+  filterStatus,
+  setFilterStatus,
 
-const prettyStatus = (status: string) => {
-  switch (status?.toLowerCase()) {
-    case 'prospecting':
-      return 'Prospecting';
-    case 'proposal':
-      return 'Proposal';
-    case 'closing':
-      return 'Closing';
-    case 'lost':
-      return 'Lost';
-    default:
-      return status || '-';
-  }
-};
+  filterLeadSource,
+  setFilterLeadSource,
 
-const prettyLeadSource = (src: string) => {
-  switch (src?.toLowerCase()) {
-    case 'referral':
-      return 'Referral';
-    case 'walk-in':
-      return 'Walk-in';
-    case 'digital':
-      return 'Digital';
-    case 'event':
-      return 'Event';
-    case 'other':
-      return 'Other';
-    default:
-      return src || '-';
-  }
-};
+  exportExcel,
+  onEditRow,
+  onDeleteRow,
+  onCopyWARow,
+  openDetailModal,
 
-// ──────────────────────────────
-// Komponen utama
-// ──────────────────────────────
+  onResetFilters,
+}: Props) {
+  const getProductName = (id: string) =>
+    products.find((p) => p.id === id)?.name || '-';
 
-export default function PipelineTable(props: PipelineTableProps) {
-  const {
-    filteredPipelines,
-    products,
-    marketers,
-    loading,
-    filterProductId,
-    setFilterProductId,
-    filterPlan,
-    setFilterPlan,
-    filterQuadrant,
-    setFilterQuadrant,
-    filterMarketerId,
-    setFilterMarketerId,
-    filterPriority,
-    setFilterPriority,
-    filterStatus,
-    setFilterStatus,
-    filterLeadSource,
-    setFilterLeadSource,
-    exportExcel,
-    openDetailModal,
-    onEditRow,
-    onDeleteRow,
-    onCopyWARow,
-    onResetFilters,
-  } = props;
-
-  // Search & pagination state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(1);
-
-  const searchedPipelines = useMemo(() => {
-    if (!searchQuery.trim()) return filteredPipelines;
-
-    const q = searchQuery.toLowerCase();
-
-    return filteredPipelines.filter((row) => {
-      return (
-        (row.customer_name ?? '').toLowerCase().includes(q) ||
-        (row.branch ?? '').toLowerCase().includes(q) ||
-        (row.class ?? '').toLowerCase().includes(q) ||
-        (row.remarks ?? '').toLowerCase().includes(q)
-      );
-    });
-  }, [filteredPipelines, searchQuery]);
-
-  const totalItems = searchedPipelines.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const pagedPipelines = searchedPipelines.slice(startIndex, endIndex);
-
-  const getProductName = (productId: string) => {
-    const p = products.find((prod) => prod.id === productId);
-    return p ? p.name : '-';
-  };
-
-  const getMarketerName = (marketerId: string | null) => {
-    if (!marketerId) return '-';
-    const m = marketers.find((mk) => mk.id === marketerId);
-    return m ? m.name : '-';
-  };
-
-  const handleChangeProduct = (e: ChangeEvent<HTMLSelectElement>) => {
-    setFilterProductId(e.target.value);
-    setPage(1);
-  };
-
-  const handleChangePlan = (e: ChangeEvent<HTMLSelectElement>) => {
-    setFilterPlan(e.target.value);
-    setPage(1);
-  };
-
-  const handleChangeQuadrant = (e: ChangeEvent<HTMLSelectElement>) => {
-    setFilterQuadrant(e.target.value);
-    setPage(1);
-  };
-
-  const handleChangeMarketer = (e: ChangeEvent<HTMLSelectElement>) => {
-    setFilterMarketerId(e.target.value);
-    setPage(1);
-  };
-
-  const handleChangePriority = (e: ChangeEvent<HTMLSelectElement>) => {
-    setFilterPriority(e.target.value);
-    setPage(1);
-  };
-
-  const handleChangeStatus = (e: ChangeEvent<HTMLSelectElement>) => {
-    setFilterStatus(e.target.value);
-    setPage(1);
-  };
-
-  const handleChangeLeadSource = (e: ChangeEvent<HTMLSelectElement>) => {
-    setFilterLeadSource(e.target.value);
-    setPage(1);
-  };
-
-  const handleResetFilters = () => {
-    onResetFilters();
-    setSearchQuery('');
-    setPage(1);
-  };
-
-  const handleChangeSearch = (value: string) => {
-    setSearchQuery(value);
-    setPage(1);
-  };
+  const getMarketerName = (id: string | null) =>
+    marketers.find((m) => m.id === id)?.name || '-';
 
   return (
-    <section className="bg-white rounded-xl shadow-sm border border-slate-100 p-3 md:p-4 space-y-3">
-      {/* Top controls: filter + search + export */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        {/* Filter group */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <select
-            value={filterProductId}
-            onChange={handleChangeProduct}
-            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-          >
-            <option value="all">Semua produk</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={filterPlan}
-            onChange={handleChangePlan}
-            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-          >
-            <option value="all">Plan: semua</option>
-            <option value="week 1">{prettyPlan('week 1')}</option>
-            <option value="week 2">{prettyPlan('week 2')}</option>
-            <option value="week 3">{prettyPlan('week 3')}</option>
-            <option value="week 4">{prettyPlan('week 4')}</option>
-          </select>
-
-          <select
-            value={filterQuadrant}
-            onChange={handleChangeQuadrant}
-            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-          >
-            <option value="all">Quadrant: semua</option>
-            <option value="k1">{prettyQuadrant('k1')}</option>
-            <option value="k2">{prettyQuadrant('k2')}</option>
-            <option value="k3">{prettyQuadrant('k3')}</option>
-            <option value="k4">{prettyQuadrant('k4')}</option>
-          </select>
-
-          <select
-            value={filterMarketerId}
-            onChange={handleChangeMarketer}
-            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-          >
-            <option value="all">Semua marketer</option>
-            {marketers.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-                {m.branch ? ` (${m.branch})` : ''}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={filterPriority}
-            onChange={handleChangePriority}
-            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-          >
-            <option value="all">Prioritas: semua</option>
-            <option value="prio">{prettyPriority(true)}</option>
-            <option value="nonprio">{prettyPriority(false)}</option>
-          </select>
-
-          <select
-            value={filterStatus}
-            onChange={handleChangeStatus}
-            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-          >
-            <option value="all">Status: semua</option>
-            <option value="prospecting">
-              {prettyStatus('prospecting')}
+    <div className="space-y-3">
+      {/* FILTER BAR */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Produk */}
+        <select
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
+          value={filterProductId}
+          onChange={(e) => setFilterProductId(e.target.value)}
+        >
+          <option value="all">Semua produk</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
             </option>
-            <option value="proposal">{prettyStatus('proposal')}</option>
-            <option value="closing">{prettyStatus('closing')}</option>
-            <option value="lost">{prettyStatus('lost')}</option>
-          </select>
+          ))}
+        </select>
 
-          <select
-            value={filterLeadSource}
-            onChange={handleChangeLeadSource}
-            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-          >
-            <option value="all">Source: semua</option>
-            <option value="referral">
-              {prettyLeadSource('referral')}
+        {/* Plan */}
+        <select
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
+          value={filterPlan}
+          onChange={(e) => setFilterPlan(e.target.value)}
+        >
+          <option value="all">Plan: semua</option>
+          <option value="week 1">Week 1</option>
+          <option value="week 2">Week 2</option>
+          <option value="week 3">Week 3</option>
+          <option value="week 4">Week 4</option>
+        </select>
+
+        {/* Quadrant */}
+        <select
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
+          value={filterQuadrant}
+          onChange={(e) => setFilterQuadrant(e.target.value)}
+        >
+          <option value="all">Quadrant: semua</option>
+          <option value="k1">K1</option>
+          <option value="k2">K2</option>
+          <option value="k3">K3</option>
+          <option value="k4">K4</option>
+        </select>
+
+        {/* Marketer */}
+        <select
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
+          value={filterMarketerId}
+          onChange={(e) => setFilterMarketerId(e.target.value)}
+        >
+          <option value="all">Semua marketer</option>
+          {marketers.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
             </option>
-            <option value="walk-in">
-              {prettyLeadSource('walk-in')}
-            </option>
-            <option value="digital">
-              {prettyLeadSource('digital')}
-            </option>
-            <option value="event">{prettyLeadSource('event')}</option>
-            <option value="other">{prettyLeadSource('other')}</option>
-          </select>
+          ))}
+        </select>
 
-          <button
-            type="button"
-            onClick={handleResetFilters}
-            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700 hover:bg-slate-50"
-          >
-            Reset filter
-          </button>
-        </div>
+        {/* Priority */}
+        <select
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
+          value={filterPriority}
+          onChange={(e) => setFilterPriority(e.target.value)}
+        >
+          <option value="all">Prioritas: semua</option>
+          <option value="prio">Prioritas saja</option>
+          <option value="nonprio">Non-prioritas</option>
+        </select>
 
-        {/* Search + Export */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleChangeSearch(e.target.value)}
-              placeholder="Cari nasabah, branch, catatan…"
-              className="w-full sm:w-56 md:w-64 h-8 rounded-lg border border-slate-200 bg-white pl-3 pr-7 text-[11px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-            />
-            <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[12px] text-slate-400">
-              🔍
-            </span>
-          </div>
+        {/* Status */}
+        <select
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <option value="all">Status: semua</option>
+          <option value="prospecting">Prospecting</option>
+          <option value="follow_up">Follow up</option>
+          <option value="won">Won / Deal</option>
+          <option value="lost">Lost / Drop</option>
+        </select>
 
-          <button
-            type="button"
-            onClick={exportExcel}
-            disabled={loading || totalItems === 0}
-            className="h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Export Excel
-          </button>
-        </div>
+        {/* Lead source */}
+        <select
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
+          value={filterLeadSource}
+          onChange={(e) => setFilterLeadSource(e.target.value)}
+        >
+          <option value="all">Source: semua</option>
+          <option value="referral">Referral</option>
+          <option value="direct">Direct</option>
+          <option value="event">Event</option>
+          <option value="online">Online</option>
+          <option value="telemarketing">Telemarketing</option>
+        </select>
+
+        <button
+          onClick={onResetFilters}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50"
+        >
+          Reset filter
+        </button>
+
+        <button
+          onClick={exportExcel}
+          className="ml-auto flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-slate-800"
+        >
+          Export Excel
+        </button>
       </div>
 
-      {/* Table area */}
-      <div className="mt-1 overflow-x-auto rounded-lg border border-slate-100">
-        <table className="min-w-full text-[11px]">
-          <thead className="bg-slate-50 text-slate-600">
-            <tr>
-              <th className="px-2 py-2 text-left font-semibold">Nasabah</th>
-              <th className="px-2 py-2 text-left font-semibold">Produk</th>
-              <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">
-                Branch
-              </th>
-              <th className="px-2 py-2 text-left font-semibold">
+      {/* TABLE */}
+      <div className="overflow-auto rounded-xl border border-slate-200">
+        <table className="min-w-full border-collapse text-xs">
+          <thead className="sticky top-0 z-10 bg-slate-50">
+            <tr className="text-left">
+              <th className="p-3 font-semibold text-slate-600">Nasabah</th>
+              <th className="p-3 font-semibold text-slate-600">Produk</th>
+              <th className="p-3 font-semibold text-slate-600">Branch</th>
+              <th className="p-3 text-right font-semibold text-slate-600">
                 APE (IDR)
               </th>
-              <th className="px-2 py-2 text-left font-semibold hidden lg:table-cell">
+              <th className="p-3 text-right font-semibold text-slate-600">
                 APE (USD)
               </th>
-              <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">
+              <th className="p-3 font-semibold text-slate-600">
                 Plan / Quadrant
               </th>
-              <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">
-                Marketer
-              </th>
-              <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">
-                Status / Source
-              </th>
-              <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">
-                Prioritas
-              </th>
-              <th className="px-2 py-2 text-right font-semibold">
+              <th className="p-3 font-semibold text-slate-600">Marketer</th>
+              <th className="p-3 font-semibold text-slate-600">Status</th>
+              <th className="p-3 font-semibold text-slate-600">Prioritas</th>
+              <th className="p-3 text-right font-semibold text-slate-600">
                 Action
               </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {loading && (
               <tr>
                 <td
                   colSpan={10}
-                  className="px-3 py-6 text-center text-slate-400"
+                  className="p-4 text-center text-[11px] text-slate-400"
                 >
                   Memuat data pipeline…
                 </td>
               </tr>
             )}
 
-            {!loading && totalItems === 0 && (
-              <tr>
-                <td
-                  colSpan={10}
-                  className="px-3 py-6 text-center text-slate-400"
-                >
-                  Tidak ada data untuk filter & pencarian saat ini.
-                </td>
-              </tr>
-            )}
-
             {!loading &&
-              pagedPipelines.map((row) => (
+              filteredPipelines.map((row) => (
                 <tr
                   key={row.id}
-                  className="hover:bg-slate-50 transition-colors"
+                  className="border-t border-slate-100 hover:bg-slate-50"
                 >
-                  {/* Nasabah + info ringkas */}
-                  <td
-                    className="px-2 py-2 align-top cursor-pointer"
-                    onClick={() => openDetailModal(row)}
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium text-slate-900">
-                        {row.customer_name}
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        {row.class || '-'}
-                      </span>
-
-                      {/* Info ringkas untuk mobile */}
-                      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-slate-500 sm:hidden">
-                        <span>{getProductName(row.product_id)}</span>
-                        <span>• {row.branch || '-'}</span>
-                        <span>• {prettyStatus(row.status ?? '')}</span>
-                      </div>
+                  {/* Nasabah */}
+                  <td className="p-3 text-slate-700">
+                    <button
+                      onClick={() => openDetailModal(row)}
+                      className="font-medium text-slate-900 hover:underline"
+                    >
+                      {row.customer_name}
+                    </button>
+                    <div className="text-[10px] text-slate-400">
+                      {row.class || '-'}
                     </div>
                   </td>
 
                   {/* Produk */}
-                  <td className="px-2 py-2 align-top hidden sm:table-cell">
-                    <span className="text-slate-800">
-                      {getProductName(row.product_id)}
-                    </span>
-                  </td>
+                  <td className="p-3">{getProductName(row.product_id)}</td>
 
                   {/* Branch */}
-                  <td className="px-2 py-2 align-top hidden md:table-cell">
-                    <span className="text-slate-800">
-                      {row.branch || '-'}
-                    </span>
-                  </td>
+                  <td className="p-3">{row.branch || '-'}</td>
 
                   {/* APE IDR */}
-                  <td className="px-2 py-2 align-top">
-                    <span className="font-medium">
-                      {formatCurrencyIdr(row.ape_idr ?? 0)}
-                    </span>
+                  <td className="p-3 text-right font-medium">
+                    {formatCurrencyIdr(row.ape_idr)}
                   </td>
 
                   {/* APE USD */}
-                  <td className="px-2 py-2 align-top hidden lg:table-cell">
-                    <span className="font-medium">
-                      {formatCurrencyUsd(row.ape_usd ?? 0)}
-                    </span>
+                  <td className="p-3 text-right font-medium">
+                    {formatCurrencyUsd(row.ape_usd)}
                   </td>
 
                   {/* Plan / Quadrant */}
-                  <td className="px-2 py-2 align-top hidden sm:table-cell">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-slate-800">
-                        {prettyPlan(row.execution_plan ?? '')}
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        {prettyQuadrant(row.quadrant ?? '')}
-                      </span>
-                    </div>
+                  <td className="p-3">
+                    {prettyPlan(row.execution_plan)} /{' '}
+                    {prettyQuadrant(row.quadrant)}
                   </td>
 
                   {/* Marketer */}
-                  <td className="px-2 py-2 align-top hidden sm:table-cell">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-slate-800">
-                        {getMarketerName(row.marketer_id ?? null)}
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        {row.pipeline_date || '-'}
-                      </span>
-                    </div>
-                  </td>
+                  <td className="p-3">{getMarketerName(row.marketer_id)}</td>
 
-                  {/* Status / Source */}
-                  <td className="px-2 py-2 align-top hidden md:table-cell">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-slate-800">
-                        {prettyStatus(row.status ?? '')}
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        {prettyLeadSource(row.lead_source ?? '')}
-                      </span>
-                    </div>
+                  {/* Status */}
+                  <td className="p-3">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-medium ${statusBadgeClass(
+                        row.status
+                      )}`}
+                    >
+                      {row.status || 'Prospecting'}
+                    </span>
                   </td>
 
                   {/* Prioritas */}
-                  <td className="px-2 py-2 align-top hidden sm:table-cell">
-                    {row.priority_flag ? (
-                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
-                        PRIORITAS
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
-                        Normal
-                      </span>
-                    )}
-                  </td>
+                  <td className="p-3">{priorityBadge(row.priority_flag)}</td>
 
                   {/* Action */}
-                  <td className="px-2 py-2 align-top text-right">
-                    <div className="inline-flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => onCopyWARow(row)}
-                        className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-700 hover:bg-slate-50"
-                      >
-                        WA
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onEditRow(row)}
-                        className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-700 hover:bg-slate-50"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDeleteRow(row)}
-                        className="rounded-full border border-red-100 bg-red-50 px-2 py-1 text-[10px] text-red-600 hover:bg-red-100"
-                      >
-                        Hapus
-                      </button>
-                    </div>
+                  <td className="space-x-2 p-3 text-right">
+                    <button
+                      onClick={() => onCopyWARow(row)}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] hover:bg-slate-100"
+                    >
+                      WA
+                    </button>
+                    <button
+                      onClick={() => onEditRow(row)}
+                      className="rounded-md border border-blue-300 bg-blue-50 px-2 py-1 text-[10px] text-blue-700 hover:bg-blue-100"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => onDeleteRow(row)}
+                      className="rounded-md border border-rose-300 bg-rose-50 px-2 py-1 text-[10px] text-rose-700 hover:bg-rose-100"
+                    >
+                      Hapus
+                    </button>
                   </td>
                 </tr>
               ))}
+
+            {!loading && filteredPipelines.length === 0 && (
+              <tr>
+                <td
+                  colSpan={10}
+                  className="p-4 text-center text-slate-500 italic"
+                >
+                  Tidak ada data pipeline.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
-
-      {/* Pagination bar */}
-      <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-[11px] text-slate-500">
-        <div>
-          {totalItems === 0 ? (
-            <span>Gunakan tombol &quot;Tambah pipeline&quot; untuk mulai.</span>
-          ) : (
-            <span>
-              Menampilkan{' '}
-              <span className="font-medium">
-                {startIndex + 1}
-              </span>
-              {'–'}
-              <span className="font-medium">
-                {Math.min(endIndex, totalItems)}
-              </span>{' '}
-              dari{' '}
-              <span className="font-medium">{totalItems}</span> baris.
-            </span>
-          )}
-        </div>
-
-        {totalItems > 0 && (
-          <div className="inline-flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
-            >
-              ← Sebelumnya
-            </button>
-            <span>
-              Halaman{' '}
-              <span className="font-semibold">{page}</span> /{' '}
-              <span className="font-semibold">{totalPages}</span>
-            </span>
-            <button
-              type="button"
-              onClick={() =>
-                setPage((p) => Math.min(totalPages, p + 1))
-              }
-              disabled={page === totalPages}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
-            >
-              Berikutnya →
-            </button>
-          </div>
-        )}
-      </div>
-    </section>
+    </div>
   );
 }
