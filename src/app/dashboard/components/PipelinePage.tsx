@@ -2,7 +2,6 @@
 
 import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import * as XLSX from 'xlsx';
 
 import { supabase } from '@/lib/supabaseClient';
@@ -12,6 +11,9 @@ import PipelineTable from './PipelineTable';
 import PipelineDetailModal from './PipelineDetailModal';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
+import DashboardTopBar from './DashboardTopBar';
+import Toast from './Toast';
+
 
 const FILTER_KEY = 'sales-pipeline-filters-v1';
 
@@ -772,44 +774,7 @@ export default function PipelinePage() {
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Top bar */}
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
-              SP
-            </div>
-            <div>
-              <h1 className="text-sm font-semibold text-slate-900">
-                Sales Pipeline
-              </h1>
-              <p className="text-[11px] text-slate-500">
-                Pipeline & reporting untuk sales asuransi
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-xs text-slate-500">Masuk sebagai</p>
-              <p className="text-xs font-medium text-slate-800">
-                {userEmail}
-              </p>
-            </div>
-            <Link
-              href="/settings"
-              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white hover:bg-slate-50"
-            >
-              Settings
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white hover:bg-slate-50"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
+      <DashboardTopBar userEmail={userEmail} onLogout={handleLogout} />
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-4">
@@ -962,19 +927,8 @@ export default function PipelinePage() {
       />
 
       {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-4 right-4 px-4 py-3 rounded-xl shadow-lg text-xs text-white z-50
-            ${
-              toast.type === 'success'
-                ? 'bg-emerald-600'
-                : 'bg-red-600'
-            }
-          `}
-        >
-          {toast.message}
-        </div>
-      )}
+      <Toast toast={toast} />
+
     </div>
   );
 }
