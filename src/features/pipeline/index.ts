@@ -1,0 +1,12 @@
+// src/features/pipeline/index.ts
+
+// Components
+export { default as PipelineSummary } from './components/PipelineSummary';
+export { default as PipelineForm } from './components/PipelineForm';
+export { default as PipelineTable } from './components/PipelineTable';
+export { default as PipelineDetailModal } from './components/PipelineDetailModal';
+export { default as PipelineFilters } from './components/PipelineFilters';
+
+// Hooks
+export { usePipelineData } from './hooks/usePipelineData';
+export { usePipelineFilters } from './hooks/usePipelineFilters';

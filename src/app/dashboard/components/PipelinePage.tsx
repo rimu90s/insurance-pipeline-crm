@@ -3,17 +3,20 @@
 import { useState, FormEvent } from 'react';
 import * as XLSX from 'xlsx';
 
+import {
+  PipelineSummary,
+  PipelineForm,
+  PipelineTable,
+  PipelineDetailModal,
+  usePipelineData,
+  usePipelineFilters,
+} from '@/features/pipeline';
+
 import { supabase } from '@/lib/supabaseClient';
-import PipelineSummary from '@/features/pipeline/components/PipelineSummary';
-import PipelineForm from '@/features/pipeline/components/PipelineForm';
-import PipelineTable from '@/features/pipeline/components/PipelineTable';
-import PipelineDetailModal from '@/features/pipeline/components/PipelineDetailModal';
 import DashboardTopBar from './DashboardTopBar';
 import Toast from './Toast';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
-import { usePipelineFilters } from '../hooks/usePipelineFilters';
-import { usePipelineData } from '../hooks/usePipelineData';
 import { useAuthUser } from '../hooks/useAuthUser';
 
 // ──────────────────────────────────────────────────────────────
