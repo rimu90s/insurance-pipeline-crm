@@ -1,0 +1,6 @@
+{
+  "css.validate": false,
+  "tailwindCSS.lint.invalidTailwindDirective": "ignore",
+  "tailwindCSS.lint.unknownAtRules": "ignore",
+  // "tailwindCSS.emmetCompletions": true
+}

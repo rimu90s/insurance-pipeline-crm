@@ -1,6 +1,8 @@
 'use client';
 
 import { FormEvent } from 'react';
+import FormField from '@/components/ui/FormField';
+import FormSection from '@/components/ui/FormSection';
 
 type Product = {
   id: string;
@@ -10,10 +12,10 @@ type Product = {
 type Marketer = {
   id: string;
   name: string;
-  branch: string | null;
+  branch?: string | null;
 };
 
-type PipelineFormProps = {
+interface PipelineFormProps {
   products: Product[];
   marketers: Marketer[];
   formError: string | null;
@@ -55,26 +57,26 @@ type PipelineFormProps = {
   priorityFlag: boolean;
   setPriorityFlag: (value: boolean) => void;
 
-  status: string;
-  setStatus: (v: string) => void;
-  
-  leadSource: string;
-  setLeadSource: (v: string) => void;
-  
-  expectedClosingDate: string;
-  setExpectedClosingDate: (v: string) => void;
-  
-  lastContactDate: string;
-  setLastContactDate: (v: string) => void;
-  
-  nextAction: string;
-  setNextAction: (v: string) => void;
-  
-  riskTag: string;
-  setRiskTag: (v: string) => void;
-
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
-};
+
+  status: string;
+  setStatus: (value: string) => void;
+
+  leadSource: string;
+  setLeadSource: (value: string) => void;
+
+  expectedClosingDate: string;
+  setExpectedClosingDate: (value: string) => void;
+
+  lastContactDate: string;
+  setLastContactDate: (value: string) => void;
+
+  nextAction: string;
+  setNextAction: (value: string) => void;
+
+  riskTag: string;
+  setRiskTag: (value: string) => void;
+}
 
 export default function PipelineForm({
   products,
@@ -106,211 +108,246 @@ export default function PipelineForm({
   priorityFlag,
   setPriorityFlag,
   onSubmit,
+  status,
+  setStatus,
+  leadSource,
+  setLeadSource,
+  expectedClosingDate,
+  setExpectedClosingDate,
+  lastContactDate,
+  setLastContactDate,
+  nextAction,
+  setNextAction,
+  riskTag,
+  setRiskTag,
 }: PipelineFormProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-900 mb-1">
-        Tambah pipeline baru
-      </h3>
-      <p className="text-xs text-slate-500 mb-3">
-        Lengkapi data sesuai format laporan (produk, marketer, APE, kuadran, dll.).
-      </p>
+    <form onSubmit={onSubmit} className="space-y-4">
 
-      {formError && (
-        <div className="mb-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2">
-          {formError}
-        </div>
-      )}
+      {/* SECTION: CUSTOMER INFO */}
+      <FormSection title="Customer Information">
+        <FormField label="Nama Nasabah">
+          <input
+            type="text"
+            className="input"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            required
+          />
+        </FormField>
 
-      <form onSubmit={onSubmit} className="space-y-3 text-xs">
-        <div className="grid grid-cols-1 gap-3">
-          <div>
-            <label className="block mb-1 font-medium text-slate-700">
-              Produk *
-            </label>
-            <select
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-            >
-              <option value="">Pilih produk</option>
-              {products.map((prod) => (
-                <option key={prod.id} value={prod.id}>
-                  {prod.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <FormField label="Kelas Nasabah">
+          <input
+            type="text"
+            className="input"
+            value={customerClass}
+            onChange={(e) => setCustomerClass(e.target.value)}
+          />
+        </FormField>
 
-          <div>
-            <label className="block mb-1 font-medium text-slate-700">
-              Nama Nasabah *
-            </label>
-            <input
-              type="text"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Nama lengkap nasabah"
-            />
-          </div>
+        <FormField label="Cabang / Branch">
+          <input
+            type="text"
+            className="input"
+            value={branch}
+            onChange={(e) => setBranch(e.target.value)}
+          />
+        </FormField>
 
-          <div>
-            <label className="block mb-1 font-medium text-slate-700">
-              Marketer pemberi nasabah
-            </label>
-            <select
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-              value={marketerId}
-              onChange={(e) => setMarketerId(e.target.value)}
-            >
-              <option value="">Pilih marketer</option>
-              {marketers.map((mk) => (
-                <option key={mk.id} value={mk.id}>
-                  {mk.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <FormField label="Marketer">
+          <select
+            className="input"
+            value={marketerId}
+            onChange={(e) => setMarketerId(e.target.value)}
+          >
+            <option value="">-</option>
+            {marketers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </FormSection>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block mb-1 font-medium text-slate-700">
-                Branch / Cabang
-              </label>
-              <input
-                type="text"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
-                placeholder="mis. KCU Wahid Hasyim"
-              />
-            </div>
-            <div>
-              <label className="block mb-1 font-medium text-slate-700">
-                Class
-              </label>
-              <input
-                type="text"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-                value={customerClass}
-                onChange={(e) => setCustomerClass(e.target.value)}
-                placeholder="B1 / B2 / dll."
-              />
-            </div>
-          </div>
+      {/* SECTION: PRODUK & FINANCIAL */}
+      <FormSection title="Produk & Financials">
+        <FormField label="Produk">
+          <select
+            className="input"
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            required
+          >
+            <option value="">Pilih produk…</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block mb-1 font-medium text-slate-700">
-                APE IDR
-              </label>
-              <input
-                type="number"
-                min={0}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-                value={apeIdr}
-                onChange={(e) => setApeIdr(e.target.value)}
-                placeholder="contoh: 120000000"
-              />
-            </div>
-            <div>
-              <label className="block mb-1 font-medium text-slate-700">
-                APE USD
-              </label>
-              <input
-                type="number"
-                min={0}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-                value={apeUsd}
-                onChange={(e) => setApeUsd(e.target.value)}
-                placeholder="contoh: 120000"
-              />
-            </div>
-          </div>
+        <FormField label="APE (IDR)">
+          <input
+            type="number"
+            className="input"
+            value={apeIdr}
+            onChange={(e) => setApeIdr(e.target.value)}
+          />
+        </FormField>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block mb-1 font-medium text-slate-700">
-                Ekspektasi Plan
-              </label>
-              <select
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-                value={executionPlan}
-                onChange={(e) => setExecutionPlan(e.target.value)}
-              >
-                <option value="week 1">week 1</option>
-                <option value="week 2">week 2</option>
-                <option value="week 3">week 3</option>
-                <option value="week 4">week 4</option>
-              </select>
-            </div>
-            <div>
-              <label className="block mb-1 font-medium text-slate-700">
-                Kuadran
-              </label>
-              <select
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-                value={quadrant}
-                onChange={(e) => setQuadrant(e.target.value)}
-              >
-                <option value="k1">k1</option>
-                <option value="k2">k2</option>
-                <option value="k3">k3</option>
-                <option value="k4">k4</option>
-              </select>
-            </div>
-          </div>
+        <FormField label="APE (USD)">
+          <input
+            type="number"
+            className="input"
+            value={apeUsd}
+            onChange={(e) => setApeUsd(e.target.value)}
+          />
+        </FormField>
 
-          <div>
-            <label className="block mb-1 font-medium text-slate-700">
-              Tanggal Pipeline
-            </label>
-            <input
-              type="date"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300"
-              value={pipelineDate}
-              onChange={(e) => setPipelineDate(e.target.value)}
-            />
-          </div>
+        <FormField label="Tanggal Pipeline">
+          <input
+            type="date"
+            className="input"
+            value={pipelineDate}
+            onChange={(e) => setPipelineDate(e.target.value)}
+          />
+        </FormField>
+      </FormSection>
 
-          <div>
-            <label className="block mb-1 font-medium text-slate-700">
-              Keterangan
-            </label>
-            <textarea
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/60 focus:outline-none focus:ring-1 focus:ring-slate-300 min-h-16"
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Contoh: Nasabah tertarik, menunggu dana masuk ke rekening."
-            />
-          </div>
+      {/* SECTION: PIPELINE META */}
+      <FormSection title="Pipeline Meta">
+        <FormField label="Execution Plan">
+          <select
+            className="input"
+            value={executionPlan}
+            onChange={(e) => setExecutionPlan(e.target.value)}
+          >
+            <option value="week 1">Week 1</option>
+            <option value="week 2">Week 2</option>
+            <option value="week 3">Week 3</option>
+            <option value="week 4">Week 4</option>
+          </select>
+        </FormField>
 
+        <FormField label="Quadrant">
+          <select
+            className="input"
+            value={quadrant}
+            onChange={(e) => setQuadrant(e.target.value)}
+          >
+            <option value="k1">K1</option>
+            <option value="k2">K2</option>
+            <option value="k3">K3</option>
+            <option value="k4">K4</option>
+          </select>
+        </FormField>
+
+        <FormField label="Status">
+          <select
+            className="input"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="prospecting">Prospecting</option>
+            <option value="followup">Follow Up</option>
+            <option value="presentation">Presentation</option>
+            <option value="closing">Closing</option>
+            <option value="closed lost">Closed Lost</option>
+          </select>
+        </FormField>
+
+        <FormField label="Lead Source">
+          <select
+            className="input"
+            value={leadSource}
+            onChange={(e) => setLeadSource(e.target.value)}
+          >
+            <option value="referral">Referral</option>
+            <option value="walk-in">Walk-in</option>
+            <option value="telemarketing">Telemarketing</option>
+            <option value="event">Event</option>
+            <option value="digital">Digital</option>
+          </select>
+        </FormField>
+      </FormSection>
+
+      {/* SECTION: NEXT ACTIONS */}
+      <FormSection title="Next Actions & Notes">
+        <FormField label="Expected Closing">
+          <input
+            type="date"
+            className="input"
+            value={expectedClosingDate}
+            onChange={(e) => setExpectedClosingDate(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="Last Contact">
+          <input
+            type="date"
+            className="input"
+            value={lastContactDate}
+            onChange={(e) => setLastContactDate(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="Next Action">
+          <input
+            type="text"
+            className="input"
+            value={nextAction}
+            onChange={(e) => setNextAction(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="Risk Tag">
+          <input
+            type="text"
+            className="input"
+            value={riskTag}
+            onChange={(e) => setRiskTag(e.target.value)}
+          />
+        </FormField>
+      </FormSection>
+
+      {/* SECTION: REMARKS */}
+      <FormSection title="Catatan Tambahan">
+        <FormField label="Remarks">
+          <textarea
+            className="input h-20"
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="Prioritas?">
           <div className="flex items-center gap-2">
             <input
-              id="priority"
               type="checkbox"
-              className="h-3 w-3 rounded border-slate-300 text-slate-900"
               checked={priorityFlag}
               onChange={(e) => setPriorityFlag(e.target.checked)}
             />
-            <label
-              htmlFor="priority"
-              className="text-xs text-slate-700 cursor-pointer"
-            >
-              Tandai sebagai prioritas (akan di-highlight di laporan Excel)
-            </label>
+            <span className="text-[11px] text-slate-600">
+              Tandai prioritas
+            </span>
           </div>
-        </div>
+        </FormField>
+      </FormSection>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full mt-1 py-2.5 rounded-lg text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition shadow-sm"
-        >
-          {saving ? 'Menyimpan...' : 'Simpan pipeline'}
-        </button>
-      </form>
-    </div>
+      {/* SUBMIT */}
+      {formError && (
+        <p className="text-[12px] text-red-600">{formError}</p>
+      )}
+
+      <button
+        type="submit"
+        disabled={saving}
+        className="w-full rounded-lg bg-slate-900 text-white py-2 text-sm font-medium hover:bg-slate-800 disabled:opacity-40"
+      >
+        {saving ? 'Menyimpan...' : 'Simpan Pipeline'}
+      </button>
+    </form>
   );
 }

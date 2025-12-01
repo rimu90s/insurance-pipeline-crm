@@ -17,6 +17,8 @@ import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import { useAuthUser } from '../hooks/useAuthUser';
 import Link from 'next/link';
+import Modal from '@/components/ui/Modal';
+
 
 // ──────────────────────────────────────────────────────────────
 //  Halaman utama Dashboard
@@ -638,75 +640,58 @@ export default function PipelinePage() {
         </section>
       </main>
 
-      {/* Modal create pipeline (tambah baru) */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-xl rounded-2xl bg-white p-4 shadow-xl md:p-5">
-            <div className="mb-2 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">
-                  Tambah pipeline baru
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Lengkapi data sesuai format laporan (produk, marketer, APE, kuadran, dll).
-                </p>
-              </div>
-              <button
-                onClick={closeCreateModal}
-                className="text-[11px] text-slate-400 hover:text-slate-700"
-              >
-                Tutup
-              </button>
-            </div>
+            {/* Modal create pipeline (tambah baru) */}
+      <Modal
+        open={showCreateModal}
+        title="Tambah pipeline baru"
+        description="Lengkapi data sesuai format laporan (produk, marketer, APE, kuadran, dll)."
+        onClose={closeCreateModal}
+      >
+        <PipelineForm
+          products={products}
+          marketers={marketers}
+          formError={formError}
+          saving={saving}
+          productId={productId}
+          setProductId={setProductId}
+          customerName={customerName}
+          setCustomerName={setCustomerName}
+          marketerId={marketerId}
+          setMarketerId={setMarketerId}
+          branch={branch}
+          setBranch={setBranch}
+          customerClass={customerClass}
+          setCustomerClass={setCustomerClass}
+          apeIdr={apeIdr}
+          setApeIdr={setApeIdr}
+          apeUsd={apeUsd}
+          setApeUsd={setApeUsd}
+          executionPlan={executionPlan}
+          setExecutionPlan={setExecutionPlan}
+          quadrant={quadrant}
+          setQuadrant={setQuadrant}
+          pipelineDate={pipelineDate}
+          setPipelineDate={setPipelineDate}
+          remarks={remarks}
+          setRemarks={setRemarks}
+          priorityFlag={priorityFlag}
+          setPriorityFlag={setPriorityFlag}
+          onSubmit={handleSubmit}
+          status={status}
+          setStatus={setStatus}
+          leadSource={leadSource}
+          setLeadSource={setLeadSource}
+          expectedClosingDate={expectedClosingDate}
+          setExpectedClosingDate={setExpectedClosingDate}
+          lastContactDate={lastContactDate}
+          setLastContactDate={setLastContactDate}
+          nextAction={nextAction}
+          setNextAction={setNextAction}
+          riskTag={riskTag}
+          setRiskTag={setRiskTag}
+        />
+      </Modal>
 
-            <div className="mt-2">
-              <PipelineForm
-                products={products}
-                marketers={marketers}
-                formError={formError}
-                saving={saving}
-                productId={productId}
-                setProductId={setProductId}
-                customerName={customerName}
-                setCustomerName={setCustomerName}
-                marketerId={marketerId}
-                setMarketerId={setMarketerId}
-                branch={branch}
-                setBranch={setBranch}
-                customerClass={customerClass}
-                setCustomerClass={setCustomerClass}
-                apeIdr={apeIdr}
-                setApeIdr={setApeIdr}
-                apeUsd={apeUsd}
-                setApeUsd={setApeUsd}
-                executionPlan={executionPlan}
-                setExecutionPlan={setExecutionPlan}
-                quadrant={quadrant}
-                setQuadrant={setQuadrant}
-                pipelineDate={pipelineDate}
-                setPipelineDate={setPipelineDate}
-                remarks={remarks}
-                setRemarks={setRemarks}
-                priorityFlag={priorityFlag}
-                setPriorityFlag={setPriorityFlag}
-                onSubmit={handleSubmit}
-                status={status}
-                setStatus={setStatus}
-                leadSource={leadSource}
-                setLeadSource={setLeadSource}
-                expectedClosingDate={expectedClosingDate}
-                setExpectedClosingDate={setExpectedClosingDate}
-                lastContactDate={lastContactDate}
-                setLastContactDate={setLastContactDate}
-                nextAction={nextAction}
-                setNextAction={setNextAction}
-                riskTag={riskTag}
-                setRiskTag={setRiskTag}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal detail / edit / delete / copy WA */}
       <PipelineDetailModal
