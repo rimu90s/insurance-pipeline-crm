@@ -1,84 +1,13 @@
 'use client';
 
-import React from 'react';
-import { PipelineRow } from '@/types/pipeline';
+import { useMemo, useState } from 'react';
+import type { PipelineRow } from '@/types/pipeline';
 
-// Tipe lokal untuk data dropdown
-type Product = {
-  id: string;
-  name: string;
-};
+// Tipe sederhana untuk master data
+type Product = { id: string; name: string };
+type Marketer = { id: string; name: string };
 
-type Marketer = {
-  id: string;
-  name: string;
-  branch: string | null;
-};
-
-// Helper sederhana (tanpa bergantung utils lain)
-const formatCurrencyIdr = (value?: number | null) => {
-  if (!value || value <= 0) return '-';
-  return `Rp ${value.toLocaleString('id-ID')}`;
-};
-
-const formatCurrencyUsd = (value?: number | null) => {
-  if (!value || value <= 0) return '$0';
-  return `$ ${value.toLocaleString('en-US')}`;
-};
-
-const prettyPlan = (plan?: string | null) => {
-  if (!plan) return '-';
-  const lower = plan.toLowerCase();
-  if (lower.startsWith('week 1')) return 'Week 1';
-  if (lower.startsWith('week 2')) return 'Week 2';
-  if (lower.startsWith('week 3')) return 'Week 3';
-  if (lower.startsWith('week 4')) return 'Week 4';
-  return plan;
-};
-
-const prettyQuadrant = (q?: string | null) => {
-  if (!q) return '-';
-  const lower = q.toLowerCase();
-  if (lower === 'k1') return 'K1';
-  if (lower === 'k2') return 'K2';
-  if (lower === 'k3') return 'K3';
-  if (lower === 'k4') return 'K4';
-  return q.toUpperCase();
-};
-
-const statusBadgeClass = (status?: string | null) => {
-  const s = (status || '').toLowerCase();
-  if (!s || s === 'prospecting') {
-    return 'bg-sky-50 text-sky-700 border-sky-100';
-  }
-  if (s.includes('follow')) {
-    return 'bg-amber-50 text-amber-700 border-amber-100';
-  }
-  if (s.includes('won') || s.includes('deal')) {
-    return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-  }
-  if (s.includes('lost') || s.includes('drop')) {
-    return 'bg-rose-50 text-rose-700 border-rose-100';
-  }
-  return 'bg-slate-50 text-slate-700 border-slate-100';
-};
-
-const priorityBadge = (flag?: boolean | null) => {
-  if (!flag) {
-    return (
-      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-[2px] text-[10px] font-medium text-slate-600">
-        Normal
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-[2px] text-[10px] font-semibold text-amber-700">
-      PRIORITAS
-    </span>
-  );
-};
-
-interface Props {
+interface PipelineTableProps {
   filteredPipelines: PipelineRow[];
   products: Product[];
   marketers: Marketer[];
@@ -107,298 +36,503 @@ interface Props {
 
   exportExcel: () => void;
 
+  openDetailModal: (row: PipelineRow) => void;
   onEditRow: (row: PipelineRow) => void;
   onDeleteRow: (row: PipelineRow) => void;
-  openDetailModal: (row: PipelineRow) => void;
   onCopyWARow: (row: PipelineRow) => void;
 
   onResetFilters: () => void;
 }
 
-export default function PipelineTable({
-  filteredPipelines,
-  products,
-  marketers,
-  loading,
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
-  filterProductId,
-  setFilterProductId,
+function getProductName(products: Product[], id: string) {
+  const p = products.find((prod) => prod.id === id);
+  return p ? p.name : '-';
+}
 
-  filterPlan,
-  setFilterPlan,
+function getMarketerName(marketers: Marketer[], id: string | null) {
+  if (!id) return '-';
+  const m = marketers.find((mk) => mk.id === id);
+  return m ? m.name : '-';
+}
 
-  filterQuadrant,
-  setFilterQuadrant,
+function formatIdr(value: number | null | undefined) {
+  if (!value) return 'Rp 0';
+  return `Rp ${value.toLocaleString('id-ID')}`;
+}
 
-  filterMarketerId,
-  setFilterMarketerId,
+function formatUsd(value: number | null | undefined) {
+  if (!value) return '$ 0';
+  return `$ ${value.toLocaleString('en-US')}`;
+}
 
-  filterPriority,
-  setFilterPriority,
+export default function PipelineTable(props: PipelineTableProps) {
+  const {
+    filteredPipelines,
+    products,
+    marketers,
+    loading,
 
-  filterStatus,
-  setFilterStatus,
+    filterProductId,
+    setFilterProductId,
 
-  filterLeadSource,
-  setFilterLeadSource,
+    filterPlan,
+    setFilterPlan,
 
-  exportExcel,
-  onEditRow,
-  onDeleteRow,
-  onCopyWARow,
-  openDetailModal,
+    filterQuadrant,
+    setFilterQuadrant,
 
-  onResetFilters,
-}: Props) {
-  const getProductName = (id: string) =>
-    products.find((p) => p.id === id)?.name || '-';
+    filterMarketerId,
+    setFilterMarketerId,
 
-  const getMarketerName = (id: string | null) =>
-    marketers.find((m) => m.id === id)?.name || '-';
+    filterPriority,
+    setFilterPriority,
+
+    filterStatus,
+    setFilterStatus,
+
+    filterLeadSource,
+    setFilterLeadSource,
+
+    exportExcel,
+
+    openDetailModal,
+    onEditRow,
+    onDeleteRow,
+    onCopyWARow,
+
+    onResetFilters,
+  } = props;
+
+  // Search & pagination
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [page, setPage] = useState<number>(1);
+
+  // Reset halaman ke 1 setiap filter/search berubah
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setPage(1);
+  };
+
+  const withPageReset =
+    <T,>(setter: (v: T) => void) =>
+    (value: T) => {
+      setter(value);
+      setPage(1);
+    };
+
+  const filteredBySearch = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return filteredPipelines;
+
+    return filteredPipelines.filter((row) => {
+      const productName = getProductName(products, row.product_id).toLowerCase();
+      const marketerName = getMarketerName(
+        marketers,
+        row.marketer_id ?? null
+      ).toLowerCase();
+
+      return (
+        row.customer_name.toLowerCase().includes(q) ||
+        (row.branch ?? '').toLowerCase().includes(q) ||
+        productName.includes(q) ||
+        marketerName.includes(q)
+      );
+    });
+  }, [searchQuery, filteredPipelines, products, marketers]);
+
+  const totalItems = filteredBySearch.length;
+  const pageCount = Math.max(1, Math.ceil(totalItems / pageSize));
+  const currentPage = Math.min(page, pageCount);
+
+  const pagedPipelines = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredBySearch.slice(start, end);
+  }, [filteredBySearch, currentPage, pageSize]);
+
+  const fromItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const toItem = Math.min(currentPage * pageSize, totalItems);
 
   return (
     <div className="space-y-3">
-      {/* FILTER BAR */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Produk */}
-        <select
-          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-          value={filterProductId}
-          onChange={(e) => setFilterProductId(e.target.value)}
-        >
-          <option value="all">Semua produk</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+      {/* FILTER + SEARCH BAR */}
+      <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+        {/* Row atas: judul + search + export */}
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="text-[11px] font-medium text-slate-600">
+            Filter & segmentasi pipeline
+          </div>
 
-        {/* Plan */}
-        <select
-          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-          value={filterPlan}
-          onChange={(e) => setFilterPlan(e.target.value)}
-        >
-          <option value="all">Plan: semua</option>
-          <option value="week 1">Week 1</option>
-          <option value="week 2">Week 2</option>
-          <option value="week 3">Week 3</option>
-          <option value="week 4">Week 4</option>
-        </select>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Cari nasabah, branch, marketer…"
+                className="h-8 w-[220px] rounded-lg border border-slate-200 bg-white pl-7 pr-2 text-[11px] text-slate-700 placeholder:text-slate-400 focus:border-slate-400"
+              />
+              <span className="pointer-events-none absolute inset-y-0 left-2 flex items-center text-[11px] text-slate-400">
+                🔍
+              </span>
+            </div>
 
-        {/* Quadrant */}
-        <select
-          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-          value={filterQuadrant}
-          onChange={(e) => setFilterQuadrant(e.target.value)}
-        >
-          <option value="all">Quadrant: semua</option>
-          <option value="k1">K1</option>
-          <option value="k2">K2</option>
-          <option value="k3">K3</option>
-          <option value="k4">K4</option>
-        </select>
+            <button
+              type="button"
+              onClick={exportExcel}
+              className="h-8 rounded-lg bg-slate-900 px-3 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
+            >
+              Export Excel
+            </button>
+          </div>
+        </div>
 
-        {/* Marketer */}
-        <select
-          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-          value={filterMarketerId}
-          onChange={(e) => setFilterMarketerId(e.target.value)}
-        >
-          <option value="all">Semua marketer</option>
-          {marketers.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
+        {/* Row bawah: grid filter */}
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Produk */}
+          <select
+            value={filterProductId}
+            onChange={(e) => withPageReset(setFilterProductId)(e.target.value)}
+            className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700"
+          >
+            <option value="">Semua produk</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
 
-        {/* Priority */}
-        <select
-          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-          value={filterPriority}
-          onChange={(e) => setFilterPriority(e.target.value)}
-        >
-          <option value="all">Prioritas: semua</option>
-          <option value="prio">Prioritas saja</option>
-          <option value="nonprio">Non-prioritas</option>
-        </select>
+          {/* Marketer */}
+          <select
+            value={filterMarketerId}
+            onChange={(e) => withPageReset(setFilterMarketerId)(e.target.value)}
+            className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700"
+          >
+            <option value="">Semua marketer</option>
+            {marketers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
 
-        {/* Status */}
-        <select
-          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="all">Status: semua</option>
-          <option value="prospecting">Prospecting</option>
-          <option value="follow_up">Follow up</option>
-          <option value="won">Won / Deal</option>
-          <option value="lost">Lost / Drop</option>
-        </select>
+          {/* Plan */}
+          <select
+            value={filterPlan}
+            onChange={(e) => withPageReset(setFilterPlan)(e.target.value)}
+            className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700"
+          >
+            <option value="">Plan: semua</option>
+            <option value="week 1">Week 1</option>
+            <option value="week 2">Week 2</option>
+            <option value="week 3">Week 3</option>
+            <option value="week 4">Week 4</option>
+          </select>
 
-        {/* Lead source */}
-        <select
-          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-          value={filterLeadSource}
-          onChange={(e) => setFilterLeadSource(e.target.value)}
-        >
-          <option value="all">Source: semua</option>
-          <option value="referral">Referral</option>
-          <option value="direct">Direct</option>
-          <option value="event">Event</option>
-          <option value="online">Online</option>
-          <option value="telemarketing">Telemarketing</option>
-        </select>
+          {/* Quadrant */}
+          <select
+            value={filterQuadrant}
+            onChange={(e) => withPageReset(setFilterQuadrant)(e.target.value)}
+            className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700"
+          >
+            <option value="">Quadrant: semua</option>
+            <option value="k1">K1</option>
+            <option value="k2">K2</option>
+            <option value="k3">K3</option>
+            <option value="k4">K4</option>
+          </select>
 
-        <button
-          onClick={onResetFilters}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50"
-        >
-          Reset filter
-        </button>
+          {/* Prioritas */}
+          <select
+            value={filterPriority}
+            onChange={(e) => withPageReset(setFilterPriority)(e.target.value)}
+            className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700"
+          >
+            <option value="">Prioritas: semua</option>
+            <option value="priority">Prioritas</option>
+            <option value="normal">Normal</option>
+          </select>
 
-        <button
-          onClick={exportExcel}
-          className="ml-auto flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-slate-800"
-        >
-          Export Excel
-        </button>
+          {/* Status */}
+          <select
+            value={filterStatus}
+            onChange={(e) => withPageReset(setFilterStatus)(e.target.value)}
+            className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700"
+          >
+            <option value="">Status: semua</option>
+            <option value="prospecting">Prospecting</option>
+            <option value="followup">Follow up</option>
+            <option value="won">Won / Deal</option>
+            <option value="lost">Lost / Drop</option>
+          </select>
+
+          {/* Lead Source */}
+          <select
+            value={filterLeadSource}
+            onChange={(e) => withPageReset(setFilterLeadSource)(e.target.value)}
+            className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700"
+          >
+            <option value="">Source: semua</option>
+            <option value="referral">Referral</option>
+            <option value="direct">Direct</option>
+            <option value="event">Event</option>
+            <option value="online">Online</option>
+            <option value="telemarketing">Telemarketing</option>
+          </select>
+
+          {/* Reset button */}
+          <button
+            type="button"
+            onClick={() => {
+              onResetFilters();
+              setSearchQuery('');
+              setPage(1);
+            }}
+            className="h-8 w-full rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Reset filter
+          </button>
+        </div>
       </div>
 
-      {/* TABLE */}
-      <div className="overflow-auto rounded-xl border border-slate-200">
-        <table className="min-w-full border-collapse text-xs">
-          <thead className="sticky top-0 z-10 bg-slate-50">
-            <tr className="text-left">
-              <th className="p-3 font-semibold text-slate-600">Nasabah</th>
-              <th className="p-3 font-semibold text-slate-600">Produk</th>
-              <th className="p-3 font-semibold text-slate-600">Branch</th>
-              <th className="p-3 text-right font-semibold text-slate-600">
-                APE (IDR)
-              </th>
-              <th className="p-3 text-right font-semibold text-slate-600">
-                APE (USD)
-              </th>
-              <th className="p-3 font-semibold text-slate-600">
-                Plan / Quadrant
-              </th>
-              <th className="p-3 font-semibold text-slate-600">Marketer</th>
-              <th className="p-3 font-semibold text-slate-600">Status</th>
-              <th className="p-3 font-semibold text-slate-600">Prioritas</th>
-              <th className="p-3 text-right font-semibold text-slate-600">
-                Action
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading && (
+      {/* TABLE WRAPPER */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="max-h-[480px] overflow-auto">
+          <table className="min-w-full border-separate border-spacing-0 text-xs">
+            <thead className="sticky top-0 z-10 bg-slate-50">
               <tr>
-                <td
-                  colSpan={10}
-                  className="p-4 text-center text-[11px] text-slate-400"
-                >
-                  Memuat data pipeline…
-                </td>
+                <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500">
+                  Nasabah
+                </th>
+                <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500">
+                  Produk
+                </th>
+                <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500">
+                  Branch
+                </th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-slate-500">
+                  APE (IDR)
+                </th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-slate-500">
+                  APE (USD)
+                </th>
+                <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500">
+                  Plan / Quadrant
+                </th>
+                <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500">
+                  Marketer
+                </th>
+                <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500">
+                  Status / Source
+                </th>
+                <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500">
+                  Prioritas
+                </th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-slate-500">
+                  Action
+                </th>
               </tr>
-            )}
+            </thead>
 
-            {!loading &&
-              filteredPipelines.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-t border-slate-100 hover:bg-slate-50"
-                >
-                  {/* Nasabah */}
-                  <td className="p-3 text-slate-700">
-                    <button
-                      onClick={() => openDetailModal(row)}
-                      className="font-medium text-slate-900 hover:underline"
-                    >
-                      {row.customer_name}
-                    </button>
-                    <div className="text-[10px] text-slate-400">
-                      {row.class || '-'}
-                    </div>
-                  </td>
-
-                  {/* Produk */}
-                  <td className="p-3">{getProductName(row.product_id)}</td>
-
-                  {/* Branch */}
-                  <td className="p-3">{row.branch || '-'}</td>
-
-                  {/* APE IDR */}
-                  <td className="p-3 text-right font-medium">
-                    {formatCurrencyIdr(row.ape_idr)}
-                  </td>
-
-                  {/* APE USD */}
-                  <td className="p-3 text-right font-medium">
-                    {formatCurrencyUsd(row.ape_usd)}
-                  </td>
-
-                  {/* Plan / Quadrant */}
-                  <td className="p-3">
-                    {prettyPlan(row.execution_plan)} /{' '}
-                    {prettyQuadrant(row.quadrant)}
-                  </td>
-
-                  {/* Marketer */}
-                  <td className="p-3">{getMarketerName(row.marketer_id)}</td>
-
-                  {/* Status */}
-                  <td className="p-3">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-medium ${statusBadgeClass(
-                        row.status
-                      )}`}
-                    >
-                      {row.status || 'Prospecting'}
-                    </span>
-                  </td>
-
-                  {/* Prioritas */}
-                  <td className="p-3">{priorityBadge(row.priority_flag)}</td>
-
-                  {/* Action */}
-                  <td className="space-x-2 p-3 text-right">
-                    <button
-                      onClick={() => onCopyWARow(row)}
-                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] hover:bg-slate-100"
-                    >
-                      WA
-                    </button>
-                    <button
-                      onClick={() => onEditRow(row)}
-                      className="rounded-md border border-blue-300 bg-blue-50 px-2 py-1 text-[10px] text-blue-700 hover:bg-blue-100"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => onDeleteRow(row)}
-                      className="rounded-md border border-rose-300 bg-rose-50 px-2 py-1 text-[10px] text-rose-700 hover:bg-rose-100"
-                    >
-                      Hapus
-                    </button>
+            <tbody>
+              {loading && (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="px-3 py-6 text-center text-[11px] text-slate-500"
+                  >
+                    Memuat data pipeline…
                   </td>
                 </tr>
-              ))}
+              )}
 
-            {!loading && filteredPipelines.length === 0 && (
-              <tr>
-                <td
-                  colSpan={10}
-                  className="p-4 text-center text-slate-500 italic"
-                >
-                  Tidak ada data pipeline.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              {!loading && pagedPipelines.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="px-3 py-6 text-center text-[11px] text-slate-500"
+                  >
+                    Tidak ada data pipeline sesuai filter dan pencarian.
+                  </td>
+                </tr>
+              )}
+
+              {!loading &&
+                pagedPipelines.map((row) => {
+                  const productName = getProductName(products, row.product_id);
+                  const marketerName = getMarketerName(
+                    marketers,
+                    row.marketer_id ?? null
+                  );
+
+                  const isPriority = !!row.priority_flag;
+
+                  return (
+                    <tr
+                      key={row.id}
+                      className="cursor-pointer border-t border-slate-100 bg-white hover:bg-slate-50"
+                      onClick={() => openDetailModal(row)}
+                    >
+                      <td className="px-3 py-2 align-middle">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-medium text-slate-900">
+                            {row.customer_name}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {row.class ?? '-'}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-2 align-middle text-[11px] text-slate-700">
+                        {productName}
+                      </td>
+
+                      <td className="px-3 py-2 align-middle text-[11px] text-slate-700">
+                        {row.branch ?? '-'}
+                      </td>
+
+                      <td className="px-3 py-2 align-middle text-right text-[11px] font-medium text-slate-900">
+                        {formatIdr(row.ape_idr)}
+                      </td>
+
+                      <td className="px-3 py-2 align-middle text-right text-[11px] text-slate-700">
+                        {formatUsd(row.ape_usd)}
+                      </td>
+
+                      <td className="px-3 py-2 align-middle text-[11px] text-slate-700">
+                        {(row.execution_plan ?? 'Week 1')}{' '}
+                        {row.quadrant ? `• ${row.quadrant.toUpperCase()}` : ''}
+                      </td>
+
+                      <td className="px-3 py-2 align-middle text-[11px] text-slate-700">
+                        {marketerName}
+                      </td>
+
+                      <td className="px-3 py-2 align-middle">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[11px] text-slate-700">
+                            {row.status ?? 'prospecting'}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {row.lead_source ?? '-'}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-2 align-middle">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                            isPriority
+                              ? 'border border-amber-200 bg-amber-50 text-amber-700'
+                              : 'border border-slate-200 bg-slate-50 text-slate-600'
+                          }`}
+                        >
+                          {isPriority ? 'PRIORITAS' : 'Normal'}
+                        </span>
+                      </td>
+
+                      <td
+                        className="px-3 py-2 align-middle text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => onCopyWARow(row)}
+                            className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-700 hover:bg-slate-50"
+                          >
+                            WA
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onEditRow(row)}
+                            className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-700 hover:bg-slate-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteRow(row)}
+                            className="rounded-full border border-rose-100 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-600 hover:bg-rose-100"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* FOOTER: pagination info */}
+        <div className="flex flex-col items-start justify-between gap-2 border-t border-slate-100 px-3 py-2.5 text-[11px] text-slate-500 sm:flex-row sm:items-center">
+          <div>
+            Menampilkan{' '}
+            <span className="font-semibold text-slate-700">
+              {fromItem}-{toItem}
+            </span>{' '}
+            dari{' '}
+            <span className="font-semibold text-slate-700">
+              {totalItems}
+            </span>{' '}
+            pipeline
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <span>Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="h-7 rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-700"
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="h-7 rounded-lg border border-slate-200 bg-white px-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ‹ Prev
+              </button>
+              <span className="px-1">
+                Page{' '}
+                <span className="font-semibold text-slate-700">
+                  {currentPage}
+                </span>{' '}
+                / {pageCount}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setPage((p) => Math.min(pageCount, p + 1))
+                }
+                disabled={currentPage >= pageCount}
+                className="h-7 rounded-lg border border-slate-200 bg-white px-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next ›
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
