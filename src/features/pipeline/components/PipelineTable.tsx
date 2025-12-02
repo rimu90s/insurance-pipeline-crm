@@ -15,13 +15,14 @@ type Marketer = {
   branch: string | null;
 };
 
+type DatePreset = 'today' | '7d' | '30d' | 'all';
+
 interface PipelineTableProps {
   filteredPipelines: PipelineRow[];
   products: Product[];
   marketers: Marketer[];
   loading: boolean;
 
-  // Filter props (semua dipakai supaya tidak ada unused warning)
   filterProductId: string;
   setFilterProductId: (v: string) => void;
 
@@ -43,8 +44,8 @@ interface PipelineTableProps {
   filterLeadSource: string;
   setFilterLeadSource: (v: string) => void;
 
-  datePreset: 'today' | '7d' | '30d' | 'all';
-  setDatePreset: (v: 'today' | '7d' | '30d' | 'all') => void;
+  datePreset: DatePreset;
+  setDatePreset: (v: DatePreset) => void;
 
   exportExcel: () => void;
   openDetailModal: (row: PipelineRow) => void;
@@ -118,8 +119,6 @@ export default function PipelineTable(props: PipelineTableProps) {
   };
 
   // Filter search di atas filteredPipelines dari parent
-    // Filter search di atas filteredPipelines dari parent (tanpa useMemo,
-  // supaya tidak bentrok dengan aturan React Compiler)
   const rowsAfterSearch = (() => {
     if (!search.trim()) return filteredPipelines;
 
@@ -139,7 +138,6 @@ export default function PipelineTable(props: PipelineTableProps) {
       );
     });
   })();
-
 
   // Pagination
   const totalRows = rowsAfterSearch.length;
@@ -165,78 +163,73 @@ export default function PipelineTable(props: PipelineTableProps) {
     <div className="space-y-3">
       {/* FILTER BAR */}
       <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-medium text-slate-600">
-            Filter & segmentasi pipeline
-          </p>
+        {/* Bar atas: label + date preset + search + export */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-[11px] font-medium text-slate-600">
+              Filter &amp; segmentasi pipeline
+            </p>
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        {/* Kiri: title + date preset */}
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-medium text-slate-600">
-            Filter & segmentasi pipeline
-          </p>
-
-          {/* Date preset pills */}
-          <div className="inline-flex flex-wrap items-center gap-1 rounded-full border border-slate-200 bg-white/70 px-1 py-0.5">
-            {[
-              { value: 'today', label: 'Hari ini' },
-              { value: '7d', label: '7 hari' },
-              { value: '30d', label: '30 hari' },
-              { value: 'all', label: 'Semua' },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() =>
-                  setDatePreset(
-                    opt.value as 'today' | '7d' | '30d' | 'all',
-                  )
-                }
-                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition
-                  ${
-                    datePreset === opt.value
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+            <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5">
+              <span className="text-[10px] text-slate-500">
+                Rentang waktu
+              </span>
+              {(
+                [
+                  { key: 'today', label: 'Hari ini' },
+                  { key: '7d', label: '7 hari' },
+                  { key: '30d', label: '30 hari' },
+                  { key: 'all', label: 'Semua' },
+                ] as { key: DatePreset; label: string }[]
+              ).map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => {
+                    setDatePreset(opt.key);
+                    setPage(1);
+                  }}
+                  className={
+                    datePreset === opt.key
+                      ? 'rounded-full bg-slate-900 px-3 py-0.5 text-[11px] font-medium text-white'
+                      : 'rounded-full px-3 py-0.5 text-[11px] text-slate-600 hover:bg-slate-50'
+                  }
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Kanan: search + export */}
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
-              🔍
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Cari nasabah, branch, marketer…"
-              className="w-64 rounded-lg border border-slate-200 bg-white pl-7 pr-3 py-1.5 text-[11px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-slate-400"
-            />
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
+                🔍
+              </span>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Cari nasabah, branch, marketer…"
+                className="w-64 rounded-lg border border-slate-200 bg-white pl-7 pr-3 py-1.5 text-[11px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-slate-400"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={exportExcel}
+              className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
+            >
+              Export Excel
+            </button>
           </div>
-            
-          <button
-            type="button"
-            onClick={exportExcel}
-            className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
-          >
-            Export Excel
-          </button>
-        </div>
-      </div>
         </div>
 
         {/* Row filter utama */}
-        <div className="grid gap-2 md:grid-cols-4 lg:grid-cols-6">
+        <div className="grid gap-2 md:grid-cols-4 lg:grid-cols-7">
           {/* Produk */}
           <select
             value={filterProductId}
@@ -377,65 +370,65 @@ export default function PipelineTable(props: PipelineTableProps) {
       </div>
 
       {/* TABLE WRAPPER */}
-      <div className="overflow-x-auto pr-3">
+      <div className="overflow-x-auto">
         <table className="min-w-full border-separate border-spacing-0 text-xs">
           <thead>
             <tr>
               {/* Nasabah (sticky kiri) */}
               <th
                 scope="col"
-                className="sticky left-0 z-20 border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
+                className="sticky left-0 z-20 min-w-[230px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Nasabah
               </th>
 
-              {/* Produk (semi-sticky kiri kedua) */}
+              {/* Produk (sticky kiri kedua) */}
               <th
                 scope="col"
-                className="sticky left-[220px] z-20 border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600 min-w-[200px]"
+                className="sticky left-[230px] z-20 min-w-[200px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Produk
               </th>
 
               <th
                 scope="col"
-                className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600 min-w-[140px]"
+                className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Branch
               </th>
               <th
                 scope="col"
-                className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600 min-w-[140px]"
+                className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 APE (IDR)
               </th>
               <th
                 scope="col"
-                className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600 min-w-[110px]"
+                className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 APE (USD)
               </th>
               <th
                 scope="col"
-                className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600 min-w-[120px]"
+                className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Plan / Quadrant
               </th>
               <th
                 scope="col"
-                className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600 min-w-[130px]"
+                className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Marketer
               </th>
               <th
                 scope="col"
-                className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600 min-w-[130px]"
+                className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Status / Source
               </th>
               <th
                 scope="col"
-                className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600 min-w-[110px]"
+                className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Prioritas
               </th>
@@ -443,7 +436,7 @@ export default function PipelineTable(props: PipelineTableProps) {
               {/* Action (sticky kanan) */}
               <th
                 scope="col"
-                className="sticky right-0 z-20 border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600 min-w-[70px]"
+                className="sticky right-0 z-20 min-w-[70px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Action
               </th>
@@ -473,13 +466,12 @@ export default function PipelineTable(props: PipelineTableProps) {
               pagedRows.map((row) => {
                 const productName = getProductName(row.product_id);
                 const marketerName = getMarketerName(row.marketer_id);
-
                 const isPrioritas = !!row.priority_flag;
 
                 return (
                   <tr
                     key={row.id}
-                    className="border-b border-slate-100 text-xs hover:bg-slate-50 transition-colors"
+                    className="border-b border-slate-100 text-xs transition-colors hover:bg-slate-50"
                   >
                     {/* Nasabah (sticky kiri) */}
                     <td className="sticky left-0 z-10 bg-white px-3 py-2 align-top">
@@ -494,15 +486,13 @@ export default function PipelineTable(props: PipelineTableProps) {
                     </td>
 
                     {/* Produk (sticky kedua) */}
-                    <td className="sticky left-[220px] z-10 bg-white px-3 py-2 align-top min-w-[200px]">
+                    <td className="sticky left-[230px] z-10 bg-white px-3 py-2 align-top min-w-[200px]">
                       <p className="text-[12px] text-slate-900">
                         {productName}
                       </p>
-                      <p className="text-[11px] text-slate-500">
-                        {row.branch ?? '—'}
-                      </p>
                     </td>
 
+                    {/* Branch */}
                     <td className="px-3 py-2 align-top text-[11px] text-slate-700">
                       {row.branch ?? '—'}
                     </td>
