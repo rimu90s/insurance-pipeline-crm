@@ -475,17 +475,16 @@ const handleMoneyInput = (field: 'ape_idr' | 'ape_usd', rawValue: string) => {
                     {pipeline.status ?? '—'}
                   </p>
                 ) : (
-                  <select
-                    className="input"
-                    value={current.status}
-                    onChange={(e) => handleChange('status', e.target.value)}
-                  >
-                    <option value="prospecting">Prospecting</option>
-                    <option value="followup">Follow Up</option>
-                    <option value="presentation">Presentation</option>
-                    <option value="closing">Closing</option>
-                    <option value="closed lost">Closed Lost</option>
-                  </select>
+                      <select
+                        className="input"
+                        value={current.status}
+                        onChange={(e) => handleChange('status', e.target.value)}
+                      >
+                        <option value="prospecting">Prospecting</option>
+                        <option value="followup">Follow up</option>
+                        <option value="won">Won / Deal</option>
+                        <option value="lost">Lost / Drop</option>
+                      </select>
                 )}
               </div>
 
@@ -503,10 +502,10 @@ const handleMoneyInput = (field: 'ape_idr' | 'ape_usd', rawValue: string) => {
                     onChange={(e) => handleChange('lead_source', e.target.value)}
                   >
                     <option value="referral">Referral</option>
-                    <option value="walk-in">Walk-in</option>
-                    <option value="telemarketing">Telemarketing</option>
+                    <option value="direct">Direct</option>
                     <option value="event">Event</option>
-                    <option value="digital">Digital</option>
+                    <option value="online">Online</option>
+                    <option value="telemarketing">Telemarketing</option>
                   </select>
                 )}
               </div>
