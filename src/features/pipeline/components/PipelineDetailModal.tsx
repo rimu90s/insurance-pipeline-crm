@@ -90,6 +90,16 @@ export default function PipelineDetailModal({
       return { ...prev, [field]: value };
     });
   };
+
+  const formatMoneyForEdit = (value?: number | null, maxLength = 15) => {
+  if (value === null || value === undefined) return '';
+  const raw = String(value);
+  const digitsOnly = raw.replace(/\D/g, '');
+  const clipped = digitsOnly.slice(0, maxLength);
+  if (!clipped) return '';
+  return clipped.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
+
   
 const handleMoneyInput = (field: 'ape_idr' | 'ape_usd', rawValue: string) => {
   const digitsOnly = rawValue.replace(/\D/g, '');
@@ -120,12 +130,8 @@ const handleMoneyInput = (field: 'ape_idr' | 'ape_usd', rawValue: string) => {
         branch: pipeline.branch ?? '',
         class: pipeline.class ?? '',
         // format awal di field
-        ape_idr: pipeline.ape_idr
-          ? pipeline.ape_idr.toLocaleString('id-ID')
-          : '',
-        ape_usd: pipeline.ape_usd
-          ? pipeline.ape_usd.toLocaleString('en-US')
-          : '',
+        ape_idr: formatMoneyForEdit(pipeline.ape_idr, 15),
+        ape_usd: formatMoneyForEdit(pipeline.ape_usd, 12),
         execution_plan: pipeline.execution_plan ?? 'week 1',
         quadrant: pipeline.quadrant ?? 'k1',
         remarks: pipeline.remarks ?? '',
@@ -408,7 +414,6 @@ const handleMoneyInput = (field: 'ape_idr' | 'ape_usd', rawValue: string) => {
         </div>
       )}
     </div>
-
 
               {/* Execution Plan */}
               <div className="space-y-1">
