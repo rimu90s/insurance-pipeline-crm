@@ -81,6 +81,11 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
   const [filterLeadSource, setFilterLeadSource] = useState<string>(
     () => initial.leadSource
   );
+    // Filter tanggal: preset sederhana (default: hari ini)
+  const [datePreset, setDatePreset] = useState<'today' | '7d' | '30d' | 'all'>(
+    'today',
+  );
+
 
   // SAVE filter ke localStorage setiap kali berubah
   useEffect(() => {
@@ -150,6 +155,45 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
         : (row.lead_source ?? '').toLowerCase() ===
           filterLeadSource.toLowerCase();
 
+        // Filter tanggal
+        let matchDate = true;
+
+        if (datePreset !== 'all') {
+          if (!row.pipeline_date) {
+            matchDate = false;
+          } else {
+            const today = new Date();
+            const todayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD
+            const rowDate = new Date(row.pipeline_date);
+          
+            // Normalisasi ke jam 00:00 biar konsisten
+            const todayMid = new Date(
+              today.getFullYear(),
+              today.getMonth(),
+              today.getDate(),
+            ).getTime();
+            const rowMid = new Date(
+              rowDate.getFullYear(),
+              rowDate.getMonth(),
+              rowDate.getDate(),
+            ).getTime();
+          
+            const diffDays = (todayMid - rowMid) / (1000 * 60 * 60 * 24);
+          
+            if (datePreset === 'today') {
+              // hanya yang tanggalnya persis hari ini
+              matchDate = row.pipeline_date === todayStr;
+            } else if (datePreset === '7d') {
+              // 7 hari ke belakang (termasuk hari ini)
+              matchDate = diffDays >= 0 && diffDays < 7;
+            } else if (datePreset === '30d') {
+              // 30 hari ke belakang
+              matchDate = diffDays >= 0 && diffDays < 30;
+            }
+          }
+        }
+      
+
     return (
       matchProduct &&
       matchPlan &&
@@ -157,7 +201,8 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
       matchMarketer &&
       matchPriority &&
       matchStatus &&
-      matchLeadSource
+      matchLeadSource &&
+      matchDate
     );
   });
 
@@ -194,6 +239,8 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
     filterStatus,
     setFilterStatus,
     filterLeadSource,
+    datePreset,
+    setDatePreset,
     setFilterLeadSource,
     filteredPipelines,
     totalApeIdr,

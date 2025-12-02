@@ -66,6 +66,8 @@ export default function PipelinePage() {
     setFilterStatus,
     filterLeadSource,
     setFilterLeadSource,
+    datePreset,
+    setDatePreset,
     filteredPipelines,
     totalApeIdr,
     totalApeUsd,
@@ -633,6 +635,8 @@ export default function PipelinePage() {
               setFilterStatus={setFilterStatus}
               filterLeadSource={filterLeadSource}
               setFilterLeadSource={setFilterLeadSource}
+              datePreset={datePreset}
+              setDatePreset={setDatePreset}
               exportExcel={exportExcel}
               openDetailModal={openDetailModal}
               onEditRow={handleEditFromTable}
