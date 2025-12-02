@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import { useAuthUser } from '../hooks/useAuthUser';
+import Link from 'next/link';
 
 
 // ──────────────────────────────────────────────────────────────
@@ -558,6 +559,12 @@ export default function PipelinePage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <Link
+                href="/settings"
+                className="hidden rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:inline-flex"
+              >
+                Settings
+              </Link>
               <button
                 onClick={logout}
                 className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
