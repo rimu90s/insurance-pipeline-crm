@@ -2,17 +2,10 @@
 
 import { useState } from 'react';
 import { PipelineRow } from '@/types/pipeline';
+import type { DateRangePreset } from '../components/DateRangePicker';
 
-export type DatePreset =
-  | 'today'
-  | 'yesterday'
-  | '7d'
-  | 'this_week'
-  | 'last_week'
-  | '30d'
-  | 'this_month'
-  | 'all'
-  | 'custom';
+// Preset tanggal yang dipakai di seluruh sistem (HARUS sama dengan DateRangePicker)
+export type DatePreset = DateRangePreset;
 
 export function usePipelineFilters(pipelines: PipelineRow[]) {
   const [filterProductId, setFilterProductId] = useState<string>('');
@@ -28,92 +21,20 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
   const [customStartDate, setCustomStartDate] = useState<string>(''); // YYYY-MM-DD
   const [customEndDate, setCustomEndDate] = useState<string>(''); // YYYY-MM-DD
 
-  // Helper util: ambil YYYY-MM-DD hari ini
+  // Helper util: YYYY-MM-DD hari ini
   const todayStr = new Date().toISOString().slice(0, 10);
 
   function isInDatePreset(row: PipelineRow): boolean {
-    const dateStr = row.pipeline_date; // asumsi kolom tanggal = 'pipeline_date' (YYYY-MM-DD atau null)
-    if (!dateStr) {
-      // kalau tidak ada tanggal, hanya tampil di mode "all"
-      return datePreset === 'all';
-    }
+    const dateStr = row.pipeline_date; // kolom tanggal: 'pipeline_date' (YYYY-MM-DD atau null)
 
-    // simple string compare saja (karena format YYYY-MM-DD)
-    if (datePreset === 'all') return true;
-    if (datePreset === 'today') return dateStr === todayStr;
-
-    const d = new Date(dateStr);
-    const today = new Date(todayStr);
-
-    // Normalisasi ke jam 00:00 biar aman
-    d.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-
-    const diffDays = Math.floor(
-      (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (datePreset === 'yesterday') {
-      return diffDays === 1;
-    }
-
-    if (datePreset === '7d') {
-      return diffDays >= 0 && diffDays <= 7;
-    }
-
-    if (datePreset === '30d') {
-      return diffDays >= 0 && diffDays <= 30;
-    }
-
-    if (datePreset === 'this_week') {
-      // Minggu ini (Senin–Minggu) berdasarkan hari ini
-      const day = today.getDay(); // 0 = Minggu
-      const mondayOffset = (day + 6) % 7; // jarak ke Senin
-      const start = new Date(today);
-      start.setDate(today.getDate() - mondayOffset);
-
-      const end = new Date(start);
-      end.setDate(start.getDate() + 6);
-
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-
-      return d >= start && d <= end;
-    }
-
-    if (datePreset === 'last_week') {
-      const day = today.getDay();
-      const mondayOffset = (day + 6) % 7;
-      const thisMonday = new Date(today);
-      thisMonday.setDate(today.getDate() - mondayOffset);
-
-      const lastMonday = new Date(thisMonday);
-      lastMonday.setDate(thisMonday.getDate() - 7);
-
-      const lastSunday = new Date(lastMonday);
-      lastSunday.setDate(lastMonday.getDate() + 6);
-
-      lastMonday.setHours(0, 0, 0, 0);
-      lastSunday.setHours(23, 59, 59, 999);
-
-      return d >= lastMonday && d <= lastSunday;
-    }
-
-    if (datePreset === 'this_month') {
-      const start = new Date(today);
-      start.setDate(1);
-      const end = new Date(start);
-      end.setMonth(start.getMonth() + 1);
-      end.setDate(0); // hari terakhir bulan ini
-
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-
-      return d >= start && d <= end;
-    }
+    // Kalau tidak ada tanggal → kita exclude saja dari semua preset
+    if (!dateStr) return false;
 
     if (datePreset === 'custom') {
-      if (!customStartDate && !customEndDate) return true; // kalau belum isi apapun, jangan memfilter apa-apa dulu
+      // custom tanpa input apapun → jangan filter (anggap "semua tanggal")
+      if (!customStartDate && !customEndDate) return true;
+
+      const d = new Date(dateStr + 'T00:00:00');
       const start = customStartDate
         ? new Date(customStartDate + 'T00:00:00')
         : null;
@@ -126,7 +47,37 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
       return true;
     }
 
-    return true;
+    // Untuk preset harian / rolling N hari
+    if (datePreset === 'today') {
+      return dateStr === todayStr;
+    }
+
+    const d = new Date(dateStr);
+    const today = new Date(todayStr);
+
+    d.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.floor(
+      (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    switch (datePreset) {
+      case 'yesterday':
+        return diffDays === 1;
+      case '7d':
+        // last 7 days (termasuk hari ini) → 0..6
+        return diffDays >= 0 && diffDays <= 6;
+      case '14d':
+        return diffDays >= 0 && diffDays <= 13;
+      case '30d':
+        return diffDays >= 0 && diffDays <= 29;
+      case '90d':
+        return diffDays >= 0 && diffDays <= 89;
+      default:
+        // fallback kalau ada preset baru nanti
+        return true;
+    }
   }
 
   const filteredPipelines = pipelines.filter((row) => {

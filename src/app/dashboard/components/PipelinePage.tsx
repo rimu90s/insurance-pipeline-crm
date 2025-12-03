@@ -17,6 +17,7 @@ import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import { useAuthUser } from '../hooks/useAuthUser';
 import Link from 'next/link';
+import DateRangePicker, {DateRangeValue,} from '@/features/pipeline/components/DateRangePicker';
 
 
 // ──────────────────────────────────────────────────────────────
@@ -52,36 +53,33 @@ export default function PipelinePage() {
 
   // 4. STATE: Filter list pipeline (hook)
   const {
-    filterProductId,
-    setFilterProductId,
-    filterPlan,
-    setFilterPlan,
-    filterQuadrant,
-    setFilterQuadrant,
-    filterMarketerId,
-    setFilterMarketerId,
-    filterPriority,
-    setFilterPriority,
-    filterStatus,
-    setFilterStatus,
-    filterLeadSource,
-    setFilterLeadSource,
+  filterProductId,
+  setFilterProductId,
+  filterPlan,
+  setFilterPlan,
+  filterQuadrant,
+  setFilterQuadrant,
+  filterMarketerId,
+  setFilterMarketerId,
+  filterPriority,
+  setFilterPriority,
+  filterStatus,
+  setFilterStatus,
+  filterLeadSource,
+  setFilterLeadSource,
 
-    // date filter
-    datePreset,
-    setDatePreset,
-    customStartDate,
-    setCustomStartDate,
-    customEndDate,
-    setCustomEndDate,
+  datePreset,
+  setDatePreset,
+  customStartDate,
+  setCustomStartDate,
+  customEndDate,
+  setCustomEndDate,
 
-    filteredPipelines,
-    totalApeIdr,
-    totalApeUsd,
-    resetFilters,
-  } = usePipelineFilters(pipelines);
-
-
+  filteredPipelines,
+  totalApeIdr,
+  totalApeUsd,
+  resetFilters,
+} = usePipelineFilters(pipelines);
 
   // 5. STATE: Form create pipeline (dipass ke PipelineForm)
   const [productId, setProductId] = useState('');
@@ -550,7 +548,7 @@ export default function PipelinePage() {
                 <h1 className="text-sm font-semibold text-slate-900">
                   Sales Pipeline CRM
                 </h1>
-                <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-[2px] text-[10px] font-medium text-emerald-700">
+                <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
                   Private beta
                 </span>
               </div>
@@ -612,8 +610,32 @@ export default function PipelinePage() {
                   Kelola pipeline harian, filter, dan export laporan untuk atasan.
                 </p>
               </div>
-
               <div className="flex items-center gap-2">
+                    <DateRangePicker
+                      key={`${datePreset}-${customStartDate}-${customEndDate}`}
+                      value={{
+                        preset: datePreset,
+                        startDate: customStartDate
+                          ? new Date(customStartDate + 'T00:00:00')
+                          : null,
+                        endDate: customEndDate
+                          ? new Date(customEndDate + 'T00:00:00')
+                          : null,
+                      }}
+                      onChange={(next: DateRangeValue) => {
+                        setDatePreset(next.preset);
+                        setCustomStartDate(
+                          next.startDate
+                            ? next.startDate.toISOString().slice(0, 10)
+                            : ''
+                        );
+                        setCustomEndDate(
+                          next.endDate
+                            ? next.endDate.toISOString().slice(0, 10)
+                            : ''
+                        );
+                      }}
+                    />
                 <button
                   onClick={openCreateModal}
                   className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
@@ -623,6 +645,31 @@ export default function PipelinePage() {
                 </button>
               </div>
             </div>
+
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                {/* <DateRangePicker
+                  key={`${datePreset}-${customStartDate}-${customEndDate}`}
+                  value={{
+                    preset: datePreset,
+                    startDate: customStartDate
+                      ? new Date(customStartDate + 'T00:00:00')
+                      : null,
+                    endDate: customEndDate
+                      ? new Date(customEndDate + 'T00:00:00')
+                      : null,
+                  }}
+                  onChange={(next: DateRangeValue) => {
+                    setDatePreset(next.preset);
+                    setCustomStartDate(
+                      next.startDate ? next.startDate.toISOString().slice(0, 10) : ''
+                    );
+                    setCustomEndDate(
+                      next.endDate ? next.endDate.toISOString().slice(0, 10) : ''
+                    );
+                  }}
+                /> */}
+                
+              </div>
 
             {/* Table & filters */}
             <PipelineTable
@@ -646,10 +693,10 @@ export default function PipelinePage() {
               setFilterLeadSource={setFilterLeadSource}
               datePreset={datePreset}
               setDatePreset={setDatePreset}
-              customStartDate={customStartDate}
-              setCustomStartDate={setCustomStartDate}
-              customEndDate={customEndDate}
-              setCustomEndDate={setCustomEndDate}
+              // customStartDate={customStartDate}
+              // setCustomStartDate={setCustomStartDate}
+              // customEndDate={customEndDate}
+              // setCustomEndDate={setCustomEndDate}
               exportExcel={exportExcel}
               openDetailModal={openDetailModal}
               onEditRow={handleEditFromTable}

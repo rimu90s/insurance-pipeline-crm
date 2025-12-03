@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { PipelineRow } from '@/types/pipeline';
+import type { DatePreset } from '../hooks/usePipelineFilters';
 
 // Tipe lokal sederhana untuk dropdown
 type Product = {
@@ -14,17 +15,6 @@ type Marketer = {
   name: string;
   branch: string | null;
 };
-
-type DatePreset =
-  | 'today'
-  | 'yesterday'
-  | '7d'
-  | 'this_week'
-  | 'last_week'
-  | '30d'
-  | 'this_month'
-  | 'all'
-  | 'custom';
 
 interface PipelineTableProps {
   filteredPipelines: PipelineRow[];
@@ -55,12 +45,6 @@ interface PipelineTableProps {
 
   datePreset: DatePreset;
   setDatePreset: (v: DatePreset) => void;
-
-  customStartDate: string;
-  setCustomStartDate: (v: string) => void;
-
-  customEndDate: string;
-  setCustomEndDate: (v: string) => void;
 
   exportExcel: () => void;
   openDetailModal: (row: PipelineRow) => void;
@@ -104,12 +88,6 @@ export default function PipelineTable(props: PipelineTableProps) {
     setFilterStatus,
     filterLeadSource,
     setFilterLeadSource,
-    datePreset,
-    setDatePreset,
-    customStartDate,
-    setCustomStartDate,
-    customEndDate,
-    setCustomEndDate,
     exportExcel,
     openDetailModal,
     onEditRow,
@@ -182,81 +160,13 @@ export default function PipelineTable(props: PipelineTableProps) {
     <div className="space-y-3">
       {/* FILTER BAR */}
       <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3">
-        {/* Bar atas: label + date preset + search + export */}
+        {/* Bar atas: label + date filter + search + export */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          {datePreset === 'custom' && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-            <div className="flex items-center gap-1">
-              <span className="text-slate-600">Dari</span>
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => {
-                  setCustomStartDate(e.target.value);
-                  setDatePreset('custom');
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 outline-none focus:border-slate-400"
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-slate-600">Sampai</span>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => {
-                  setCustomEndDate(e.target.value);
-                  setDatePreset('custom');
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 outline-none focus:border-slate-400"
-              />
-            </div>
-            <span className="text-[10px] text-slate-500">
-              Filter akan langsung terapkan otomatis.
-            </span>
-          </div>
-        )}
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-[11px] font-medium text-slate-600">
               Filter &amp; segmentasi pipeline
             </p>
-            <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5">
-              <span className="text-[10px] text-slate-500">Rentang waktu</span>
-              {(
-                [
-                  { key: 'today', label: 'Hari ini' },
-                  { key: 'yesterday', label: 'Kemarin' },
-                  { key: '7d', label: '7 hari' },
-                  { key: 'this_week', label: 'Minggu ini' },
-                  { key: 'last_week', label: 'Minggu lalu' },
-                  { key: '30d', label: '30 hari' },
-                  { key: 'this_month', label: 'Bulan ini' },
-                  { key: 'all', label: 'Semua' },
-                  { key: 'custom', label: 'Custom' },
-                ] as { key: DatePreset; label: string }[]
-              ).map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => {
-                    setDatePreset(opt.key);
-                    // kalau keluar dari custom, reset custom date supaya tidak nyangkut
-                    if (opt.key !== 'custom') {
-                      setCustomStartDate('');
-                      setCustomEndDate('');
-                    }
-                  }}
-                  className={
-                    datePreset === opt.key
-                      ? 'rounded-full bg-slate-900 px-3 py-0.5 text-[11px] font-medium text-white'
-                      : 'rounded-full px-3 py-0.5 text-[11px] text-slate-600 hover:bg-slate-50'
-                  }
-                >
-                  {opt.label}
-                </button>
-              ))}
-</div>
           </div>
-
           <div className="flex items-center gap-2">
             <div className="relative">
               <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
@@ -542,7 +452,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                     </td>
 
                     {/* Produk (sticky kedua) */}
-                    <td className="sticky left-[230px] z-10 bg-white px-3 py-2 align-top min-w-[200px]">
+                    <td className="sticky left-[230px] z-10 min-w-[200px] bg-white px-3 py-2 align-top">
                       <p className="text-[12px] text-slate-900">
                         {productName}
                       </p>
@@ -588,8 +498,8 @@ export default function PipelineTable(props: PipelineTableProps) {
                       <span
                         className={
                           isPrioritas
-                            ? 'inline-flex items-center rounded-xl border border-amber-200/60 bg-amber-50 px-3 py-[2px] text-[11px] font-medium text-amber-700'
-                            : 'inline-flex items-center rounded-xl border border-slate-200/60 bg-slate-50 px-3 py-[2px] text-[11px] font-medium text-slate-600'
+                            ? 'inline-flex items-center rounded-xl border border-amber-200/60 bg-amber-50 px-3 py-0.5 text-[11px] font-medium text-amber-700'
+                            : 'inline-flex items-center rounded-xl border border-slate-200/60 bg-slate-50 px-3 py-0.5 text-[11px] font-medium text-slate-600'
                         }
                       >
                         {isPrioritas ? 'PRIORITAS' : 'Normal'}
@@ -603,7 +513,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                           type="button"
                           onClick={() =>
                             setOpenMenuId(
-                              openMenuId === row.id ? null : row.id
+                              openMenuId === row.id ? null : row.id,
                             )
                           }
                           className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-[16px] leading-none text-slate-500 shadow-sm hover:bg-slate-50"
