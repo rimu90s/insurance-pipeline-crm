@@ -66,13 +66,21 @@ export default function PipelinePage() {
     setFilterStatus,
     filterLeadSource,
     setFilterLeadSource,
+
+    // date filter
     datePreset,
     setDatePreset,
+    customStartDate,
+    setCustomStartDate,
+    customEndDate,
+    setCustomEndDate,
+
     filteredPipelines,
     totalApeIdr,
     totalApeUsd,
     resetFilters,
   } = usePipelineFilters(pipelines);
+
 
 
   // 5. STATE: Form create pipeline (dipass ke PipelineForm)
@@ -638,6 +646,10 @@ export default function PipelinePage() {
               setFilterLeadSource={setFilterLeadSource}
               datePreset={datePreset}
               setDatePreset={setDatePreset}
+              customStartDate={customStartDate}
+              setCustomStartDate={setCustomStartDate}
+              customEndDate={customEndDate}
+              setCustomEndDate={setCustomEndDate}
               exportExcel={exportExcel}
               openDetailModal={openDetailModal}
               onEditRow={handleEditFromTable}

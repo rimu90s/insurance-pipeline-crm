@@ -3,69 +3,146 @@
 import { useState } from 'react';
 import { PipelineRow } from '@/types/pipeline';
 
-type DatePreset = 'today' | '7d' | '30d' | 'all';
+export type DatePreset =
+  | 'today'
+  | 'yesterday'
+  | '7d'
+  | 'this_week'
+  | 'last_week'
+  | '30d'
+  | 'this_month'
+  | 'all'
+  | 'custom';
 
 export function usePipelineFilters(pipelines: PipelineRow[]) {
-  const [filterProductId, setFilterProductId] = useState('');
-  const [filterPlan, setFilterPlan] = useState('');
-  const [filterQuadrant, setFilterQuadrant] = useState('');
-  const [filterMarketerId, setFilterMarketerId] = useState('');
-  const [filterPriority, setFilterPriority] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterLeadSource, setFilterLeadSource] = useState('');
+  const [filterProductId, setFilterProductId] = useState<string>('');
+  const [filterPlan, setFilterPlan] = useState<string>('');
+  const [filterQuadrant, setFilterQuadrant] = useState<string>('');
+  const [filterMarketerId, setFilterMarketerId] = useState<string>('');
+  const [filterPriority, setFilterPriority] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterLeadSource, setFilterLeadSource] = useState<string>('');
 
-  // 🔹 preset tanggal (default: hari ini)
+  // Date filter
   const [datePreset, setDatePreset] = useState<DatePreset>('today');
+  const [customStartDate, setCustomStartDate] = useState<string>(''); // YYYY-MM-DD
+  const [customEndDate, setCustomEndDate] = useState<string>(''); // YYYY-MM-DD
 
-  // Helper: parse 'YYYY-MM-DD' → timestamp start-of-day
-  const parseDate = (value: string | null) => {
-    if (!value) return null;
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return null;
-    d.setHours(0, 0, 0, 0);
-    return d.getTime();
-  };
+  // Helper util: ambil YYYY-MM-DD hari ini
+  const todayStr = new Date().toISOString().slice(0, 10);
 
-  // Terapkan preset tanggal ke list pipelines
-  const applyDatePreset = (rows: PipelineRow[]): PipelineRow[] => {
-    if (datePreset === 'all') return rows;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayMs = today.getTime();
-
-    let minMs = todayMs;
-
-    if (datePreset === '7d') {
-      minMs = todayMs - 6 * 24 * 60 * 60 * 1000;
-    } else if (datePreset === '30d') {
-      minMs = todayMs - 29 * 24 * 60 * 60 * 1000;
+  function isInDatePreset(row: PipelineRow): boolean {
+    const dateStr = row.pipeline_date; // asumsi kolom tanggal = 'pipeline_date' (YYYY-MM-DD atau null)
+    if (!dateStr) {
+      // kalau tidak ada tanggal, hanya tampil di mode "all"
+      return datePreset === 'all';
     }
 
-    return rows.filter((row) => {
-      const t = parseDate(row.pipeline_date ?? null);
-      if (t === null) {
-        // Kalau tidak ada tanggal, sembunyikan untuk preset selain "all"
-        return false;
-      }
+    // simple string compare saja (karena format YYYY-MM-DD)
+    if (datePreset === 'all') return true;
+    if (datePreset === 'today') return dateStr === todayStr;
 
-      if (datePreset === 'today') {
-        return t === todayMs;
-      }
+    const d = new Date(dateStr);
+    const today = new Date(todayStr);
 
-      return t >= minMs && t <= todayMs;
-    });
-  };
+    // Normalisasi ke jam 00:00 biar aman
+    d.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
 
-  // 🔹 Apply: DATE → lalu filter lain
-  const filteredPipelines = applyDatePreset(pipelines).filter((row) => {
-    if (filterProductId && row.product_id !== filterProductId) return false;
+    const diffDays = Math.floor(
+      (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
-    if (filterPlan && (row.execution_plan ?? '') !== filterPlan) return false;
+    if (datePreset === 'yesterday') {
+      return diffDays === 1;
+    }
 
-    if (filterQuadrant && (row.quadrant ?? '') !== filterQuadrant) return false;
+    if (datePreset === '7d') {
+      return diffDays >= 0 && diffDays <= 7;
+    }
 
-    if (filterMarketerId && (row.marketer_id ?? '') !== filterMarketerId) {
+    if (datePreset === '30d') {
+      return diffDays >= 0 && diffDays <= 30;
+    }
+
+    if (datePreset === 'this_week') {
+      // Minggu ini (Senin–Minggu) berdasarkan hari ini
+      const day = today.getDay(); // 0 = Minggu
+      const mondayOffset = (day + 6) % 7; // jarak ke Senin
+      const start = new Date(today);
+      start.setDate(today.getDate() - mondayOffset);
+
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+
+      return d >= start && d <= end;
+    }
+
+    if (datePreset === 'last_week') {
+      const day = today.getDay();
+      const mondayOffset = (day + 6) % 7;
+      const thisMonday = new Date(today);
+      thisMonday.setDate(today.getDate() - mondayOffset);
+
+      const lastMonday = new Date(thisMonday);
+      lastMonday.setDate(thisMonday.getDate() - 7);
+
+      const lastSunday = new Date(lastMonday);
+      lastSunday.setDate(lastMonday.getDate() + 6);
+
+      lastMonday.setHours(0, 0, 0, 0);
+      lastSunday.setHours(23, 59, 59, 999);
+
+      return d >= lastMonday && d <= lastSunday;
+    }
+
+    if (datePreset === 'this_month') {
+      const start = new Date(today);
+      start.setDate(1);
+      const end = new Date(start);
+      end.setMonth(start.getMonth() + 1);
+      end.setDate(0); // hari terakhir bulan ini
+
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+
+      return d >= start && d <= end;
+    }
+
+    if (datePreset === 'custom') {
+      if (!customStartDate && !customEndDate) return true; // kalau belum isi apapun, jangan memfilter apa-apa dulu
+      const start = customStartDate
+        ? new Date(customStartDate + 'T00:00:00')
+        : null;
+      const end = customEndDate
+        ? new Date(customEndDate + 'T23:59:59')
+        : null;
+
+      if (start && d < start) return false;
+      if (end && d > end) return false;
+      return true;
+    }
+
+    return true;
+  }
+
+  const filteredPipelines = pipelines.filter((row) => {
+    if (filterProductId && row.product_id !== filterProductId) {
+      return false;
+    }
+
+    if (filterPlan && (row.execution_plan ?? '') !== filterPlan) {
+      return false;
+    }
+
+    if (filterQuadrant && (row.quadrant ?? '') !== filterQuadrant) {
+      return false;
+    }
+
+    if (filterMarketerId && row.marketer_id !== filterMarketerId) {
       return false;
     }
 
@@ -75,21 +152,24 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
       if (filterPriority === 'normal' && isPrioritas) return false;
     }
 
-    if (filterStatus && (row.status ?? '') !== filterStatus) return false;
+    if (filterStatus && (row.status ?? '') !== filterStatus) {
+      return false;
+    }
 
     if (filterLeadSource && (row.lead_source ?? '') !== filterLeadSource) {
       return false;
     }
 
+    // filter tanggal terakhir
+    if (!isInDatePreset(row)) return false;
+
     return true;
   });
 
-  // 🔹 Total APE dari hasil filter
   const totalApeIdr = filteredPipelines.reduce(
     (sum, row) => sum + (row.ape_idr ?? 0),
     0
   );
-
   const totalApeUsd = filteredPipelines.reduce(
     (sum, row) => sum + (row.ape_usd ?? 0),
     0
@@ -103,10 +183,13 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
     setFilterPriority('');
     setFilterStatus('');
     setFilterLeadSource('');
-    setDatePreset('today'); // balik ke preset hari ini
+    setDatePreset('today');
+    setCustomStartDate('');
+    setCustomEndDate('');
   };
 
   return {
+    // state filter umum
     filterProductId,
     setFilterProductId,
     filterPlan,
@@ -121,8 +204,16 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
     setFilterStatus,
     filterLeadSource,
     setFilterLeadSource,
+
+    // date filter
     datePreset,
     setDatePreset,
+    customStartDate,
+    setCustomStartDate,
+    customEndDate,
+    setCustomEndDate,
+
+    // hasil
     filteredPipelines,
     totalApeIdr,
     totalApeUsd,

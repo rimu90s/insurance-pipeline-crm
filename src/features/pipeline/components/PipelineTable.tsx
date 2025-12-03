@@ -15,7 +15,16 @@ type Marketer = {
   branch: string | null;
 };
 
-type DatePreset = 'today' | '7d' | '30d' | 'all';
+type DatePreset =
+  | 'today'
+  | 'yesterday'
+  | '7d'
+  | 'this_week'
+  | 'last_week'
+  | '30d'
+  | 'this_month'
+  | 'all'
+  | 'custom';
 
 interface PipelineTableProps {
   filteredPipelines: PipelineRow[];
@@ -46,6 +55,12 @@ interface PipelineTableProps {
 
   datePreset: DatePreset;
   setDatePreset: (v: DatePreset) => void;
+
+  customStartDate: string;
+  setCustomStartDate: (v: string) => void;
+
+  customEndDate: string;
+  setCustomEndDate: (v: string) => void;
 
   exportExcel: () => void;
   openDetailModal: (row: PipelineRow) => void;
@@ -91,6 +106,10 @@ export default function PipelineTable(props: PipelineTableProps) {
     setFilterLeadSource,
     datePreset,
     setDatePreset,
+    customStartDate,
+    setCustomStartDate,
+    customEndDate,
+    setCustomEndDate,
     exportExcel,
     openDetailModal,
     onEditRow,
@@ -165,21 +184,54 @@ export default function PipelineTable(props: PipelineTableProps) {
       <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3">
         {/* Bar atas: label + date preset + search + export */}
         <div className="flex flex-wrap items-center justify-between gap-2">
+          {datePreset === 'custom' && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+            <div className="flex items-center gap-1">
+              <span className="text-slate-600">Dari</span>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => {
+                  setCustomStartDate(e.target.value);
+                  setDatePreset('custom');
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 outline-none focus:border-slate-400"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-slate-600">Sampai</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => {
+                  setCustomEndDate(e.target.value);
+                  setDatePreset('custom');
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 outline-none focus:border-slate-400"
+              />
+            </div>
+            <span className="text-[10px] text-slate-500">
+              Filter akan langsung terapkan otomatis.
+            </span>
+          </div>
+        )}
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-[11px] font-medium text-slate-600">
               Filter &amp; segmentasi pipeline
             </p>
-
             <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5">
-              <span className="text-[10px] text-slate-500">
-                Rentang waktu
-              </span>
+              <span className="text-[10px] text-slate-500">Rentang waktu</span>
               {(
                 [
                   { key: 'today', label: 'Hari ini' },
+                  { key: 'yesterday', label: 'Kemarin' },
                   { key: '7d', label: '7 hari' },
+                  { key: 'this_week', label: 'Minggu ini' },
+                  { key: 'last_week', label: 'Minggu lalu' },
                   { key: '30d', label: '30 hari' },
+                  { key: 'this_month', label: 'Bulan ini' },
                   { key: 'all', label: 'Semua' },
+                  { key: 'custom', label: 'Custom' },
                 ] as { key: DatePreset; label: string }[]
               ).map((opt) => (
                 <button
@@ -187,7 +239,11 @@ export default function PipelineTable(props: PipelineTableProps) {
                   type="button"
                   onClick={() => {
                     setDatePreset(opt.key);
-                    setPage(1);
+                    // kalau keluar dari custom, reset custom date supaya tidak nyangkut
+                    if (opt.key !== 'custom') {
+                      setCustomStartDate('');
+                      setCustomEndDate('');
+                    }
                   }}
                   className={
                     datePreset === opt.key
@@ -198,7 +254,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                   {opt.label}
                 </button>
               ))}
-            </div>
+</div>
           </div>
 
           <div className="flex items-center gap-2">
