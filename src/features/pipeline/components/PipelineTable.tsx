@@ -3,6 +3,10 @@
 import React, { useMemo, useState } from 'react';
 import { PipelineRow, ProductMaster, MarketerMaster } from '@/types/pipeline';
 import type { DatePreset } from '../hooks/usePipelineFilters';
+import DateRangePicker, {
+  DateRangeValue,
+} from '@/features/pipeline/components/DateRangePicker';
+
 
 interface PipelineTableProps {
   filteredPipelines: PipelineRow[];
@@ -33,6 +37,13 @@ interface PipelineTableProps {
 
   datePreset: DatePreset;
   setDatePreset: (v: DatePreset) => void;
+
+  customStartDate: string;
+setCustomStartDate: (v: string) => void;
+
+customEndDate: string;
+setCustomEndDate: (v: string) => void;
+
 
   exportExcel: () => void;
   openDetailModal: (row: PipelineRow) => void;
@@ -77,6 +88,10 @@ export default function PipelineTable(props: PipelineTableProps) {
     filterLeadSource,
     setFilterLeadSource,
     datePreset,
+    customStartDate,
+setCustomStartDate,
+customEndDate,
+setCustomEndDate,
     setDatePreset,
     exportExcel,
     openDetailModal,
@@ -156,6 +171,24 @@ export default function PipelineTable(props: PipelineTableProps) {
             <p className="text-[11px] font-medium text-slate-600">
               Filter &amp; segmentasi pipeline
             </p>
+            <DateRangePicker
+  value={{
+    preset: datePreset,
+    startDate: customStartDate ? new Date(customStartDate + 'T00:00:00') : null,
+    endDate: customEndDate ? new Date(customEndDate + 'T00:00:00') : null,
+  }}
+  onChange={(next: DateRangeValue) => {
+  setDatePreset(next.preset);
+  setCustomStartDate(
+    next.startDate ? next.startDate.toISOString().slice(0, 10) : ''
+  );
+  setCustomEndDate(
+    next.endDate ? next.endDate.toISOString().slice(0, 10) : ''
+  );
+}}
+
+/>
+
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">

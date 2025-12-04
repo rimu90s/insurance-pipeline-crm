@@ -55,7 +55,7 @@ export type ProductMaster = {
 export type MarketerMaster = {
   id: string;
   name: string;
-  branch?: string | null; // sesuaikan dengan kebutuhan UI (boleh null/undefined)
+  branch: string | null; // sesuaikan dengan kebutuhan UI (boleh null/undefined)
   [key: string]: unknown;
 };
 

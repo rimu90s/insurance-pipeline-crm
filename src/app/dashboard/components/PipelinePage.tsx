@@ -404,37 +404,41 @@ const marketerMap = useMemo(() => {
 
             {/* Table & filters */}
             <PipelineTable
-              filteredPipelines={filteredPipelines}
-              products={products}
-              marketers={marketers}
-              loading={loadingData}
-              filterProductId={filterProductId}
-              setFilterProductId={setFilterProductId}
-              filterPlan={filterPlan}
-              setFilterPlan={setFilterPlan}
-              filterQuadrant={filterQuadrant}
-              setFilterQuadrant={setFilterQuadrant}
-              filterMarketerId={filterMarketerId}
-              setFilterMarketerId={setFilterMarketerId}
-              filterPriority={filterPriority}
-              setFilterPriority={setFilterPriority}
-              filterStatus={filterStatus}
-              setFilterStatus={setFilterStatus}
-              filterLeadSource={filterLeadSource}
-              setFilterLeadSource={setFilterLeadSource}
-              datePreset={datePreset}
-              setDatePreset={setDatePreset}
-              // customStartDate={customStartDate}
-              // setCustomStartDate={setCustomStartDate}
-              // customEndDate={customEndDate}
-              // setCustomEndDate={setCustomEndDate}
-              exportExcel={exportExcel}
-              openDetailModal={openDetailModal}
-              onEditRow={handleEditFromTable}
-              onDeleteRow={handleDeleteFromTable}
-              onCopyWARow={copyShortFromTable}
-              onResetFilters={resetFilters}
-            />
+  filteredPipelines={filteredPipelines}
+  products={products}
+  marketers={marketers}
+  loading={loadingData}
+
+  filterProductId={filterProductId}
+  setFilterProductId={setFilterProductId}
+  filterPlan={filterPlan}
+  setFilterPlan={setFilterPlan}
+  filterQuadrant={filterQuadrant}
+  setFilterQuadrant={setFilterQuadrant}
+  filterMarketerId={filterMarketerId}
+  setFilterMarketerId={setFilterMarketerId}
+  filterPriority={filterPriority}
+  setFilterPriority={setFilterPriority}
+  filterStatus={filterStatus}
+  setFilterStatus={setFilterStatus}
+  filterLeadSource={filterLeadSource}
+  setFilterLeadSource={setFilterLeadSource}
+
+  datePreset={datePreset}
+  setDatePreset={setDatePreset}
+  customStartDate={customStartDate}
+  setCustomStartDate={setCustomStartDate}
+  customEndDate={customEndDate}
+  setCustomEndDate={setCustomEndDate}
+
+  exportExcel={exportExcel}
+  openDetailModal={openDetailModal}
+  onEditRow={handleEditFromTable}
+  onDeleteRow={handleDeleteFromTable}
+  onCopyWARow={copyShortFromTable}
+  onResetFilters={resetFilters}
+/>
+
           </section>
         </div>
       </main>
