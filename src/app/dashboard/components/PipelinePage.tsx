@@ -21,6 +21,13 @@ import Toast from './Toast';
 import { usePipelineCreateForm } from '@/features/pipeline/hooks/usePipelineCreateForm';
 import { usePipelineEditing } from '@/features/pipeline/hooks/usePipelineEditing';
 
+function formatDateLocalYYYYMMDD(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // ──────────────────────────────────────────────────────────────
 //  Halaman utama Dashboard
 // ──────────────────────────────────────────────────────────────
@@ -379,14 +386,10 @@ export default function PipelinePage() {
                       onChange={(next: DateRangeValue) => {
                         setDatePreset(next.preset);
                         setCustomStartDate(
-                          next.startDate
-                            ? next.startDate.toISOString().slice(0, 10)
-                            : ''
+                          next.startDate ? formatDateLocalYYYYMMDD(next.startDate) : ''
                         );
                         setCustomEndDate(
-                          next.endDate
-                            ? next.endDate.toISOString().slice(0, 10)
-                            : ''
+                          next.endDate ? formatDateLocalYYYYMMDD(next.endDate) : ''
                         );
                       }}
                     />
