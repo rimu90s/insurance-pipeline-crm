@@ -10,3 +10,8 @@ export { default as PipelineFilters } from './components/PipelineFilters';
 // Hooks
 export { usePipelineData } from './hooks/usePipelineData';
 export { usePipelineFilters } from './hooks/usePipelineFilters';
+export { useProducts } from './hooks/useProducts';
+export { useMarketers } from './hooks/useMarketers';
+export { usePipelines } from './hooks/usePipelines';
+export { usePipelineCreateForm } from './hooks/usePipelineCreateForm';
+export { usePipelineEditing } from './hooks/usePipelineEditing';

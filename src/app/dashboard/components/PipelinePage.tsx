@@ -9,18 +9,19 @@ import {
   PipelineTable,
   PipelineDetailModal,
   usePipelineFilters,
+  useProducts,
+  useMarketers,
+  usePipelines,
+  usePipelineCreateForm,
+  usePipelineEditing,
 } from '@/features/pipeline';
+
 
 import { PipelineRow } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import { useAuthUser } from '../hooks/useAuthUser';
 import DateRangePicker, {DateRangeValue,} from '@/features/pipeline/components/DateRangePicker';
 import Toast from './Toast';
-import { usePipelineCreateForm } from '@/features/pipeline/hooks/usePipelineCreateForm';
-import { usePipelineEditing } from '@/features/pipeline/hooks/usePipelineEditing';
-import { useProducts } from '@/features/pipeline/hooks/useProducts';
-import { useMarketers } from '@/features/pipeline/hooks/useMarketers';
-import { usePipelines } from '@/features/pipeline/hooks/usePipelines';
 import PipelineHeader from './PipelineHeader';
 
 function formatDateLocalYYYYMMDD(d: Date): string {
