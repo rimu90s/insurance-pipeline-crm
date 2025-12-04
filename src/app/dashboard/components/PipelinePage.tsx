@@ -19,7 +19,7 @@ import { useAuthUser } from '../hooks/useAuthUser';
 import Link from 'next/link';
 import DateRangePicker, {DateRangeValue,} from '@/features/pipeline/components/DateRangePicker';
 import Toast from './Toast';
-
+import { usePipelineCreateForm } from '@/features/pipeline/hooks/usePipelineCreateForm';
 
 // ──────────────────────────────────────────────────────────────
 //  Halaman utama Dashboard
@@ -82,31 +82,59 @@ export default function PipelinePage() {
   resetFilters,
 } = usePipelineFilters(pipelines);
 
-  // 5. STATE: Form create pipeline (dipass ke PipelineForm)
-  const [productId, setProductId] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [marketerId, setMarketerId] = useState('');
-  const [branch, setBranch] = useState('');
-  const [customerClass, setCustomerClass] = useState('');
-  const [apeIdr, setApeIdr] = useState('');
-  const [apeUsd, setApeUsd] = useState('');
-  const [executionPlan, setExecutionPlan] = useState('week 1');
-  const [quadrant, setQuadrant] = useState('k1');
-  const [remarks, setRemarks] = useState('');
-  const [priorityFlag, setPriorityFlag] = useState(false);
-  const [pipelineDate, setPipelineDate] = useState<string>('');
+  // 5. STATE + LOGIC: Form create pipeline (via hook)
+  const {
+    productId,
+    setProductId,
+    customerName,
+    setCustomerName,
+    marketerId,
+    setMarketerId,
+    branch,
+    setBranch,
+    customerClass,
+    setCustomerClass,
+    apeIdr,
+    setApeIdr,
+    apeUsd,
+    setApeUsd,
+    executionPlan,
+    setExecutionPlan,
+    quadrant,
+    setQuadrant,
+    pipelineDate,
+    setPipelineDate,
+    remarks,
+    setRemarks,
+    priorityFlag,
+    setPriorityFlag,
+    status,
+    setStatus,
+    leadSource,
+    setLeadSource,
+    expectedClosingDate,
+    setExpectedClosingDate,
+    lastContactDate,
+    setLastContactDate,
+    nextAction,
+    setNextAction,
+    riskTag,
+    setRiskTag,
+    saving,
+    formError,
+    resetForm,
+    handleSubmit,
+  } = usePipelineCreateForm({ userId, reloadPipelines });
 
-  // field tambahan (status, lead source, dll)
-  const [status, setStatus] = useState<string>('prospecting');
-  const [leadSource, setLeadSource] = useState<string>('referral');
-  const [expectedClosingDate, setExpectedClosingDate] =
-    useState<string>(''); // YYYY-MM-DD
-  const [lastContactDate, setLastContactDate] = useState<string>(''); // YYYY-MM-DD
-  const [nextAction, setNextAction] = useState<string>('');
-  const [riskTag, setRiskTag] = useState<string>('');
+    // Wrapper submit untuk menghubungkan logic hook dengan UI (toast + modal)
+  const handleCreateSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    const ok = await handleSubmit(e);
+    if (ok) {
+      showToast('Pipeline baru berhasil disimpan.', 'success');
+      setShowCreateModal(false);
+    }
+  };
 
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   // Toast kecil untuk notifikasi
   const [toast, setToast] = useState<{
@@ -120,95 +148,6 @@ export default function PipelinePage() {
   ) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3000);
-  };
-
-  // ──────────────────────────────────────────────────────────
-  //  UTIL: Reset form create pipeline
-  // ──────────────────────────────────────────────────────────
-
-  const resetForm = () => {
-    setProductId('');
-    setCustomerName('');
-    setMarketerId('');
-    setBranch('');
-    setCustomerClass('');
-    setApeIdr('');
-    setApeUsd('');
-    setExecutionPlan('week 1');
-    setQuadrant('k1');
-    setRemarks('');
-    setPriorityFlag(false);
-    setPipelineDate('');
-    setFormError(null);
-
-    setStatus('prospecting');
-    setLeadSource('referral');
-    setExpectedClosingDate('');
-    setLastContactDate('');
-    setNextAction('');
-    setRiskTag('');
-  };
-
-  // ──────────────────────────────────────────────────────────
-  //  HANDLER: Submit form create pipeline
-  // ──────────────────────────────────────────────────────────
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setFormError(null);
-
-    if (!userId) {
-      setFormError('User tidak valid. Silakan login ulang.');
-      return;
-    }
-
-    if (!productId || !customerName) {
-      setFormError('Produk dan nama nasabah wajib diisi.');
-      return;
-    }
-
-    setSaving(true);
-
-    try {
-      const parsedApeIdr = apeIdr ? parseFloat(apeIdr.replace(/,/g, '')) : 0;
-      const parsedApeUsd = apeUsd ? parseFloat(apeUsd.replace(/,/g, '')) : 0;
-
-      const { error } = await supabase.from('pipelines').insert({
-        owner_id: userId,
-        product_id: productId,
-        marketer_id: marketerId || null,
-        customer_name: customerName,
-        branch: branch || null,
-        class: customerClass || null,
-        ape_idr: parsedApeIdr,
-        ape_usd: parsedApeUsd,
-        execution_plan: executionPlan,
-        quadrant: quadrant,
-        remarks: remarks || null,
-        priority_flag: priorityFlag,
-        pipeline_date: pipelineDate || null,
-        status: status || 'prospecting',
-        lead_source: leadSource || 'referral',
-        expected_closing_date: expectedClosingDate || null,
-        last_contact_date: lastContactDate || null,
-        next_action: nextAction || null,
-        risk_tag: riskTag || null,
-      });
-
-      if (error) {
-        setFormError(error.message);
-        return;
-      }
-
-      // reload pipelines setelah insert
-      await reloadPipelines();
-
-      resetForm();
-      showToast('Pipeline baru berhasil disimpan.', 'success');
-      setShowCreateModal(false);
-    } finally {
-      setSaving(false);
-    }
   };
 
   // ──────────────────────────────────────────────────────────
@@ -317,12 +256,8 @@ export default function PipelinePage() {
       customer_name: selectedPipeline.customer_name,
       branch: selectedPipeline.branch ?? '',
       class: selectedPipeline.class ?? '',
-      ape_idr: selectedPipeline.ape_idr
-        ? String(selectedPipeline.ape_idr)
-        : '',
-      ape_usd: selectedPipeline.ape_usd
-        ? String(selectedPipeline.ape_usd)
-        : '',
+      ape_idr: selectedPipeline.ape_idr ? String(selectedPipeline.ape_idr) : '',
+      ape_usd: selectedPipeline.ape_usd ? String(selectedPipeline.ape_usd) : '',
       execution_plan: selectedPipeline.execution_plan ?? 'week 1',
       quadrant: selectedPipeline.quadrant ?? 'k1',
       remarks: selectedPipeline.remarks ?? '',
@@ -330,8 +265,7 @@ export default function PipelinePage() {
       pipeline_date: selectedPipeline.pipeline_date ?? '',
       status: selectedPipeline.status ?? 'prospecting',
       lead_source: selectedPipeline.lead_source ?? 'referral',
-      expected_closing_date:
-        selectedPipeline.expected_closing_date ?? '',
+      expected_closing_date: selectedPipeline.expected_closing_date ?? '',
       last_contact_date: selectedPipeline.last_contact_date ?? '',
       next_action: selectedPipeline.next_action ?? '',
       risk_tag: selectedPipeline.risk_tag ?? '',
@@ -760,7 +694,7 @@ export default function PipelinePage() {
           setRemarks={setRemarks}
           priorityFlag={priorityFlag}
           setPriorityFlag={setPriorityFlag}
-          onSubmit={handleSubmit}
+          onSubmit={handleCreateSubmit}
           status={status}
           setStatus={setStatus}
           leadSource={leadSource}
