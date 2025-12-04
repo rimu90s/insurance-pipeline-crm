@@ -130,8 +130,6 @@ const isInDatePreset = useCallback(
         // ── filter tanggal: gunakan helper isInDatePreset yang sudah ada
     result = result.filter(isInDatePreset);
 
-
-
     return result;
   }, [
     pipelines,
