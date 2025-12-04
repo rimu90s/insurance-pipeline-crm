@@ -8,7 +8,6 @@ export { default as PipelineDetailModal } from './components/PipelineDetailModal
 export { default as PipelineFilters } from './components/PipelineFilters';
 
 // Hooks
-export { usePipelineData } from './hooks/usePipelineData';
 export { usePipelineFilters } from './hooks/usePipelineFilters';
 export { useProducts } from './hooks/useProducts';
 export { useMarketers } from './hooks/useMarketers';
