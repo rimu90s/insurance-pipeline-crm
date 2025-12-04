@@ -1,13 +1,11 @@
 'use client';
 
 import React from 'react';
-
-type Product = { id: string; name: string };
-type Marketer = { id: string; name: string; branch: string | null };
+import type { ProductMaster, MarketerMaster } from '@/types/pipeline';
 
 type PipelineFiltersProps = {
-  products: Product[];
-  marketers: Marketer[];
+  products: ProductMaster[];
+  marketers: MarketerMaster[];
 
   filterProductId: string;
   setFilterProductId: (v: string) => void;

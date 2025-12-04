@@ -1,15 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import type { ProductMaster } from '@/types/pipeline';
 
 export function useProducts() {
-    type Product = {
-    id: string;
-    name: string;
-      // field lain boleh ada, tapi tidak kita pakai di frontend scope ini
-    [key: string]: unknown;
-    };
-    const [products, setProducts] = useState<Product[]>([]);
+    const [products, setProducts] = useState<ProductMaster[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(true);
 
   useEffect(() => {

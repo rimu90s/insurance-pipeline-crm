@@ -1,25 +1,13 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { PipelineRow } from '@/types/pipeline';
+import { PipelineRow, ProductMaster, MarketerMaster } from '@/types/pipeline';
 import type { DatePreset } from '../hooks/usePipelineFilters';
-
-// Tipe lokal sederhana untuk dropdown
-type Product = {
-  id: string;
-  name: string;
-};
-
-type Marketer = {
-  id: string;
-  name: string;
-  branch: string | null;
-};
 
 interface PipelineTableProps {
   filteredPipelines: PipelineRow[];
-  products: Product[];
-  marketers: Marketer[];
+  products: ProductMaster[];
+  marketers: MarketerMaster[];
   loading: boolean;
 
   filterProductId: string;

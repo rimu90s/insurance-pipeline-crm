@@ -1,11 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import type { MarketerMaster } from '@/types/pipeline';
 
 export function useMarketers() {
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const [marketers, setMarketers] = useState<any[]>([]);
+const [marketers, setMarketers] = useState<MarketerMaster[]>([]);
 const [loadingMarketers, setLoadingMarketers] = useState(true);
 
   useEffect(() => {

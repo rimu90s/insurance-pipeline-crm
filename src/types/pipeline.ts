@@ -40,3 +40,22 @@ export type PipelineEditForm = {
   next_action: string;
   risk_tag: string;
 };
+
+// ─────────────────────────────────────────────
+// Master data types (products, marketers)
+// ─────────────────────────────────────────────
+
+export type ProductMaster = {
+  id: string;
+  name: string;
+  // kolom lain dari tabel products boleh ada tapi tidak wajib di-define
+  [key: string]: unknown;
+};
+
+export type MarketerMaster = {
+  id: string;
+  name: string;
+  branch?: string | null; // sesuaikan dengan kebutuhan UI (boleh null/undefined)
+  [key: string]: unknown;
+};
+
