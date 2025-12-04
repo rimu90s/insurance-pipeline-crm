@@ -18,6 +18,7 @@ import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import { useAuthUser } from '../hooks/useAuthUser';
 import Link from 'next/link';
 import DateRangePicker, {DateRangeValue,} from '@/features/pipeline/components/DateRangePicker';
+import Toast from './Toast';
 
 
 // ──────────────────────────────────────────────────────────────
@@ -800,19 +801,7 @@ export default function PipelinePage() {
       />
 
       {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-4 right-4 z-50 rounded-xl px-4 py-3 text-xs text-white shadow-lg
-            ${
-              toast!.type === 'success'
-                ? 'bg-emerald-600'
-                : 'bg-red-600'
-            }
-          `}
-        >
-          {toast!.message}
-        </div>
-      )}
+      <Toast toast={toast} />
     </div>
   );
 }
