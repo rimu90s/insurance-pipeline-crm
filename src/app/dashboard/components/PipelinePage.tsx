@@ -14,7 +14,6 @@ import {
 import { PipelineRow } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
 import { useAuthUser } from '../hooks/useAuthUser';
-import Link from 'next/link';
 import DateRangePicker, {DateRangeValue,} from '@/features/pipeline/components/DateRangePicker';
 import Toast from './Toast';
 import { usePipelineCreateForm } from '@/features/pipeline/hooks/usePipelineCreateForm';
@@ -22,6 +21,7 @@ import { usePipelineEditing } from '@/features/pipeline/hooks/usePipelineEditing
 import { useProducts } from '@/features/pipeline/hooks/useProducts';
 import { useMarketers } from '@/features/pipeline/hooks/useMarketers';
 import { usePipelines } from '@/features/pipeline/hooks/usePipelines';
+import PipelineHeader from './PipelineHeader';
 
 function formatDateLocalYYYYMMDD(d: Date): string {
   const year = d.getFullYear();
@@ -300,56 +300,7 @@ const loadingData = loadingProducts || loadingMarketers || loadingPipelines;
   return (
     <div className="min-h-screen">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-          {/* Brand + context */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-[11px] font-semibold tracking-tight text-white shadow-sm">
-              SP
-            </div>
-
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm font-semibold text-slate-900">
-                  Sales Pipeline CRM
-                </h1>
-                <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                  Private beta
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500">
-                Monitoring pipeline asuransi, APE, dan progres closing harian.
-              </p>
-            </div>
-          </div>
-
-          {/* User section */}
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-[11px] text-slate-500">Masuk sebagai</p>
-              <p className="max-w-[200px] truncate text-[11px] font-medium text-slate-800">
-                {userEmail}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/settings"
-                className="hidden rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:inline-flex"
-              >
-                Settings
-              </Link>
-              <button
-                onClick={logout}
-                className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+      <PipelineHeader userEmail={userEmail} onLogout={logout} />
       {/* Main content */}
       <main className="mx-auto max-w-6xl px-4 py-5">
         <div className="space-y-5">
