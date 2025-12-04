@@ -262,7 +262,7 @@ export default function PipelineTable(props: PipelineTableProps) {
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 outline-none focus:border-slate-400"
           >
             <option value="">Prioritas: semua</option>
-            <option value="prioritas">Prioritas</option>
+            <option value="priority">Prioritas</option>
             <option value="normal">Normal</option>
           </select>
 
