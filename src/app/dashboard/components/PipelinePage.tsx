@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 
 import {
@@ -181,15 +181,33 @@ const loadingData = loadingProducts || loadingMarketers || loadingPipelines;
   //  UTIL: Helper nama produk & marketer dari id
   // ──────────────────────────────────────────────────────────
 
-  const getProductName = (productId: string) => {
-    const product = products.find((p) => p.id === productId);
-    return product ? product.name : '-';
+const productMap = useMemo(() => {
+  const map: Record<string, string> = {};
+  products.forEach((p: { id?: string; name?: string | null }) => {
+    if (p && p.id) {
+      map[p.id] = p.name ?? '';
+    }
+  });
+  return map;
+}, [products]);
+
+const marketerMap = useMemo(() => {
+  const map: Record<string, string> = {};
+  marketers.forEach((m: { id?: string; name?: string | null }) => {
+    if (m && m.id) {
+      map[m.id] = m.name ?? '';
+    }
+  });
+  return map;
+}, [marketers]);
+
+    const getProductName = (productId: string) => {
+    return productMap[productId] ?? '-';
   };
 
   const getMarketerName = (marketerId: string | null) => {
     if (!marketerId) return '-';
-    const marketer = marketers.find((m) => m.id === marketerId);
-    return marketer ? marketer.name : '-';
+    return marketerMap[marketerId] ?? '-';
   };
 
   // ──────────────────────────────────────────────────────────
