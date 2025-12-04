@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { PipelineRow } from '@/types/pipeline';
 import type { DateRangePreset } from '../components/DateRangePicker';
 
@@ -21,10 +21,15 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
   const [customStartDate, setCustomStartDate] = useState<string>(''); // YYYY-MM-DD
   const [customEndDate, setCustomEndDate] = useState<string>(''); // YYYY-MM-DD
 
-  // Helper util: YYYY-MM-DD hari ini
-  const todayStr = new Date().toISOString().slice(0, 10);
+// Helper util: YYYY-MM-DD hari ini (lokal user)
+const todayStr = useMemo(() => {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}, []);
 
-  function isInDatePreset(row: PipelineRow): boolean {
+const isInDatePreset = useCallback(
+  (row: PipelineRow): boolean => {
     const dateStr = row.pipeline_date; // kolom tanggal: 'pipeline_date' (YYYY-MM-DD atau null)
 
     // Kalau tidak ada tanggal → kita exclude saja dari semua preset
@@ -78,52 +83,78 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
         // fallback kalau ada preset baru nanti
         return true;
     }
-  }
+  },
+  [datePreset, customStartDate, customEndDate, todayStr]
+);
 
-  const filteredPipelines = pipelines.filter((row) => {
-    if (filterProductId && row.product_id !== filterProductId) {
-      return false;
+  const filteredPipelines = useMemo(() => {
+    let result: PipelineRow[] = [...pipelines];
+
+    // ── filter by product
+    if (filterProductId) {
+      result = result.filter((row) => row.product_id === filterProductId);
     }
 
-    if (filterPlan && (row.execution_plan ?? '') !== filterPlan) {
-      return false;
+    // ── filter by plan
+    if (filterPlan) {
+      result = result.filter((row) => row.execution_plan === filterPlan);
     }
 
-    if (filterQuadrant && (row.quadrant ?? '') !== filterQuadrant) {
-      return false;
+    // ── filter by quadrant
+    if (filterQuadrant) {
+      result = result.filter((row) => row.quadrant === filterQuadrant);
     }
 
-    if (filterMarketerId && row.marketer_id !== filterMarketerId) {
-      return false;
+    // ── filter by marketer
+    if (filterMarketerId) {
+      result = result.filter((row) => row.marketer_id === filterMarketerId);
     }
 
-    if (filterPriority) {
-      const isPrioritas = !!row.priority_flag;
-      if (filterPriority === 'prioritas' && !isPrioritas) return false;
-      if (filterPriority === 'normal' && isPrioritas) return false;
+    // ── filter by priority
+    if (filterPriority === 'priority') {
+      result = result.filter((row) => row.priority_flag);
     }
 
-    if (filterStatus && (row.status ?? '') !== filterStatus) {
-      return false;
+    // ── filter by status
+    if (filterStatus) {
+      result = result.filter((row) => row.status === filterStatus);
     }
 
-    if (filterLeadSource && (row.lead_source ?? '') !== filterLeadSource) {
-      return false;
+    // ── filter by lead source
+    if (filterLeadSource) {
+      result = result.filter((row) => row.lead_source === filterLeadSource);
     }
 
-    // filter tanggal terakhir
-    if (!isInDatePreset(row)) return false;
+    // ── filter tanggal (sesuaikan dengan logika kamu yang sudah ada)
+    // contoh pola umum: kalau datePreset === 'custom', pakai customStartDate/customEndDate
+        // ── filter tanggal: gunakan helper isInDatePreset yang sudah ada
+    result = result.filter(isInDatePreset);
 
-    return true;
-  });
 
-  const totalApeIdr = filteredPipelines.reduce(
-    (sum, row) => sum + (row.ape_idr ?? 0),
-    0
+
+    return result;
+  }, [
+    pipelines,
+    filterProductId,
+    filterPlan,
+    filterQuadrant,
+    filterMarketerId,
+    filterPriority,
+    filterStatus,
+    filterLeadSource,
+    isInDatePreset
+  ]);
+
+  const totalApeIdr = useMemo(
+    () =>
+      filteredPipelines.reduce((sum, row) => sum + (row.ape_idr ?? 0), 0),
+    [filteredPipelines]
   );
-  const totalApeUsd = filteredPipelines.reduce(
-    (sum, row) => sum + (row.ape_usd ?? 0),
-    0
+
+  const totalApeUsd = useMemo(
+    () =>
+      filteredPipelines.reduce((sum, row) => sum + (row.ape_usd ?? 0), 0),
+    [filteredPipelines]
   );
 
   const resetFilters = () => {
