@@ -8,7 +8,6 @@ import {
   PipelineForm,
   PipelineTable,
   PipelineDetailModal,
-  usePipelineData,
   usePipelineFilters,
 } from '@/features/pipeline';
 
@@ -20,6 +19,9 @@ import DateRangePicker, {DateRangeValue,} from '@/features/pipeline/components/D
 import Toast from './Toast';
 import { usePipelineCreateForm } from '@/features/pipeline/hooks/usePipelineCreateForm';
 import { usePipelineEditing } from '@/features/pipeline/hooks/usePipelineEditing';
+import { useProducts } from '@/features/pipeline/hooks/useProducts';
+import { useMarketers } from '@/features/pipeline/hooks/useMarketers';
+import { usePipelines } from '@/features/pipeline/hooks/usePipelines';
 
 function formatDateLocalYYYYMMDD(d: Date): string {
   const year = d.getFullYear();
@@ -37,14 +39,17 @@ export default function PipelinePage() {
   const { loadingUser, userEmail, userId, logout } = useAuthUser();
 
   // 2. DATA: Master & pipelines (via hook)
+  const { products, loadingProducts } = useProducts();
+  const { marketers, loadingMarketers } = useMarketers();
   const {
-    products,
-    marketers,
     pipelines,
     setPipelines,
-    loadingData,
+    loadingPipelines,
     reloadPipelines,
-  } = usePipelineData(userId);
+  } = usePipelines(userId);
+
+const loadingData = loadingProducts || loadingMarketers || loadingPipelines;
+
 
   // 3a. STATE: Modal create pipeline (tambah baru)
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -175,14 +180,14 @@ export default function PipelinePage() {
   //  UTIL: Helper nama produk & marketer dari id
   // ──────────────────────────────────────────────────────────
 
-  const getProductName = (product_id: string) => {
-    const product = products.find((prod) => prod.id === product_id);
+  const getProductName = (productId: string) => {
+    const product = products.find((p) => p.id === productId);
     return product ? product.name : '-';
   };
 
-  const getMarketerName = (marketer_id: string | null) => {
-    if (!marketer_id) return '-';
-    const marketer = marketers.find((mk) => mk.id === marketer_id);
+  const getMarketerName = (marketerId: string | null) => {
+    if (!marketerId) return '-';
+    const marketer = marketers.find((m) => m.id === marketerId);
     return marketer ? marketer.name : '-';
   };
 
@@ -269,7 +274,6 @@ export default function PipelinePage() {
   const copyShortFromTable = (row: PipelineRow) => {
     const product = getProductName(row.product_id);
     const marketer = getMarketerName(row.marketer_id);
-
     const message = buildWhatsAppMessage(
       row,
       product,
