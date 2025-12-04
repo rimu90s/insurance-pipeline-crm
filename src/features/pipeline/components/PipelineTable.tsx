@@ -88,6 +88,8 @@ export default function PipelineTable(props: PipelineTableProps) {
     setFilterStatus,
     filterLeadSource,
     setFilterLeadSource,
+    datePreset,
+    setDatePreset,
     exportExcel,
     openDetailModal,
     onEditRow,
@@ -425,7 +427,31 @@ export default function PipelineTable(props: PipelineTableProps) {
                   colSpan={10}
                   className="border-b border-slate-100 px-3 py-6 text-center text-[11px] text-slate-500"
                 >
-                  Tidak ada data pipeline yang cocok dengan filter.
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-[11px] text-slate-500">
+                      {datePreset === 'today'
+                        ? 'Belum ada pipeline untuk hari ini.'
+                        : 'Tidak ada data pipeline yang cocok dengan filter.'}
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDatePreset('7d')}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                      >
+                        Lihat 7 hari terakhir
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={onResetFilters}
+                        className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
+                      >
+                        Reset semua filter
+                      </button>
+                    </div>
+                  </div>
                 </td>
               </tr>
             ) : (
