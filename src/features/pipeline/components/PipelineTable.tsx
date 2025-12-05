@@ -35,13 +35,6 @@ interface PipelineTableProps {
   datePreset: DatePreset;
   setDatePreset: (v: DatePreset) => void;
 
-  customStartDate: string;
-setCustomStartDate: (v: string) => void;
-
-customEndDate: string;
-setCustomEndDate: (v: string) => void;
-
-
   exportExcel: () => void;
   openDetailModal: (row: PipelineRow) => void;
   onEditRow: (row: PipelineRow) => void;
