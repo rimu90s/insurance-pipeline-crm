@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type { PipelineRow } from '@/types/pipeline';
 
+// Util: format YYYY-MM-DD (local-safe)
 function formatDateLocalYYYYMMDD(d: Date): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -10,10 +11,10 @@ function formatDateLocalYYYYMMDD(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function getDatePart(value: string | null | undefined): string | null {
-  if (!value) return null;
-  // Supabase timestamp biasanya dalam ISO string → ambil 10 char pertama (YYYY-MM-DD)
-  return value.slice(0, 10);
+// Extract date part from timestamps
+function getDatePart(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return iso.slice(0, 10);
 }
 
 export interface TodaySummary {
@@ -27,8 +28,8 @@ export interface TodaySummary {
 }
 
 export interface WeeklyRow {
-  date: string; // YYYY-MM-DD
-  label: string; // misal: "Sen, 03"
+  date: string;
+  label: string;
   totalPipeline: number;
   apeIdr: number;
   apeUsd: number;
@@ -41,103 +42,103 @@ export interface DailyReportStats {
   weekly: WeeklyRow[];
 }
 
-type PipelineRowWithCreatedAt = PipelineRow & {
-    created_at?: string | null;
+type PipelineRowExtended = PipelineRow & {
+  created_at?: string | null;
 };
 
-
 /**
- * Hitung statistik laporan harian dari seluruh pipelines milik user.
- * Tidak terpengaruh filter UI (pakai data mentah).
+ * Generate today + 7-day trend statistics.
+ * Input: full pipelines (no UI filter applied).
  */
-export function useDailyReport(pipelines: PipelineRow[]): DailyReportStats {
+export function useDailyReport(
+  pipelines: PipelineRow[],
+  preset: "today" | "yesterday" | "7d" | "30d" = "today"
+): DailyReportStats {
   return useMemo(() => {
-    const today = new Date();
-    const todayStr = formatDateLocalYYYYMMDD(today);
+    // Today context (base)
+    const now = new Date();
+    // Anchor date berdasarkan preset
+    const anchor = new Date(now);
+    if (preset === "yesterday") {
+      anchor.setDate(anchor.getDate() - 1);
+    }
+    // Format anchor (YYYY-MM-DD)
+    const anchorStr = formatDateLocalYYYYMMDD(anchor);
 
-    // ───── TODAY SUMMARY ─────────────────────────────────────
+    // FILTER: pipeline with today's pipeline_date
     const todayRows = pipelines.filter(
-      (p) => p.pipeline_date === todayStr
+      (p) => p.pipeline_date === anchorStr
     );
 
-    let apeIdrToday = 0;
-    let apeUsdToday = 0;
-    let newPipelinesToday = 0;
-    let followUpsToday = 0;
-    let wonToday = 0;
-    let lostToday = 0;
+    let apeIdr = 0;
+    let apeUsd = 0;
+    let newPipelines = 0;
+    let followUps = 0;
+    let won = 0;
+    let lost = 0;
 
-for (const baseRow of pipelines) {
-  const row = baseRow as PipelineRowWithCreatedAt;
+    for (const pBase of pipelines) {
+      const p = pBase as PipelineRowExtended;
 
-  const pipelineDate = row.pipeline_date ?? null;
-  const createdDate = getDatePart(row.created_at ?? null);
-  const lastContactDate = row.last_contact_date ?? null;
-  const status = row.status ?? '';
+      const pipelineDate = p.pipeline_date ?? null;
+      const createdDate = getDatePart(p.created_at);
+      const lastContactDate = p.last_contact_date ?? null;
+      const status = p.status ?? '';
 
-  if (pipelineDate === todayStr) {
-    apeIdrToday += row.ape_idr ?? 0;
-    apeUsdToday += row.ape_usd ?? 0;
+      if (pipelineDate === anchorStr) {
+        apeIdr += p.ape_idr ?? 0;
+        apeUsd += p.ape_usd ?? 0;
+        if (status === 'won') won += 1;
+        if (status === 'lost') lost += 1;
+      }
 
-    if (status === 'won') wonToday += 1;
-    if (status === 'lost') lostToday += 1;
-  }
-
-  if (createdDate === todayStr) {
-    newPipelinesToday += 1;
-  }
-
-  if (lastContactDate === todayStr) {
-    followUpsToday += 1;
-  }
-}
+      if (createdDate === anchorStr) newPipelines += 1;
+      if (lastContactDate === anchorStr) followUps += 1;
+    }
 
     const todaySummary: TodaySummary = {
       totalPipeline: todayRows.length,
-      apeIdr: apeIdrToday,
-      apeUsd: apeUsdToday,
-      newPipelines: newPipelinesToday,
-      followUps: followUpsToday,
-      won: wonToday,
-      lost: lostToday,
+      apeIdr,
+      apeUsd,
+      newPipelines,
+      followUps,
+      won,
+      lost,
     };
 
-    // ───── WEEKLY TREND (7 hari ke belakang, termasuk hari ini) ───────────────
+    // WEEKLY TREND
     const weekly: WeeklyRow[] = [];
-
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
+    const range = preset === "30d" ? 30 : 7;
+    for (let i = range - 1; i >= 0; i--) {
+      const d = new Date(anchor);
       d.setDate(d.getDate() - i);
       const dateStr = formatDateLocalYYYYMMDD(d);
 
       const rows = pipelines.filter((p) => p.pipeline_date === dateStr);
 
-      let apeIdr = 0;
-      let apeUsd = 0;
-      let won = 0;
-      let lost = 0;
+      let apeIdrDay = 0;
+      let apeUsdDay = 0;
+      let wonDay = 0;
+      let lostDay = 0;
 
-      for (const row of rows) {
-        apeIdr += row.ape_idr ?? 0;
-        apeUsd += row.ape_usd ?? 0;
-
-        if ((row.status ?? '') === 'won') won += 1;
-        if ((row.status ?? '') === 'lost') lost += 1;
+      for (const r of rows) {
+        apeIdrDay += r.ape_idr ?? 0;
+        apeUsdDay += r.ape_usd ?? 0;
+        if ((r.status ?? '') === 'won') wonDay += 1;
+        if ((r.status ?? '') === 'lost') lostDay += 1;
       }
 
-      const weekday = d.toLocaleDateString('id-ID', {
-        weekday: 'short',
-      }); // misal "Sen"
-      const day = String(d.getDate()).padStart(2, '0');
+      const weekday = d.toLocaleDateString('id-ID', { weekday: 'short' });
+      const dayNum = String(d.getDate()).padStart(2, '0');
 
       weekly.push({
         date: dateStr,
-        label: `${weekday}, ${day}`,
+        label: `${weekday}, ${dayNum}`,
         totalPipeline: rows.length,
-        apeIdr,
-        apeUsd,
-        won,
-        lost,
+        apeIdr: apeIdrDay,
+        apeUsd: apeUsdDay,
+        won: wonDay,
+        lost: lostDay,
       });
     }
 
@@ -145,5 +146,5 @@ for (const baseRow of pipelines) {
       today: todaySummary,
       weekly,
     };
-  }, [pipelines]);
+  }, [pipelines, preset]);
 }

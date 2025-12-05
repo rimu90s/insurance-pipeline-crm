@@ -31,7 +31,7 @@ export default function DailyReportPage() {
     return (
       <div className="min-h-screen">
         <PipelineHeader userEmail={userEmail} onLogout={logout} />
-        <main className="mx-auto max-w-6xl px-4 py-5">
+        <main className="mx-auto max-w-6xl px-4 py-6">
           <p className="text-sm text-slate-600">
             Memuat laporan harian…
           </p>
@@ -58,66 +58,60 @@ export default function DailyReportPage() {
         </section>
 
         {/* TODAY SUMMARY */}
-        <section className="grid gap-4 md:grid-cols-4 rounded-2xl border border-white/60 bg-white/80 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="flex flex-col gap-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <p className="text-[11px] font-medium text-slate-500">
-              Pipeline hari ini
-            </p>
-            <h2 className="text-2xl font-semibold text-slate-900 leading-tight">
-              {today.totalPipeline}
-            </h2>
-            <p className="text-[11px] text-slate-500">
-              Jumlah pipeline dengan tanggal pipeline hari ini.
-            </p>
-          </div>
+        <section className="grid gap-4 md:grid-cols-4">
+        {[
+          {
+            title: "Pipeline hari ini",
+            value: today.totalPipeline,
+            desc: "Jumlah pipeline bertanggal hari ini",
+          },
+          {
+            title: "APE IDR hari ini",
+            value: formatCurrencyIdr(today.apeIdr),
+            desc: "Total APE IDR pipeline hari ini",
+          },
+          {
+            title: "APE USD hari ini",
+            value: formatCurrencyUsd(today.apeUsd),
+            desc: "Total APE USD pipeline hari ini",
+          },
+          {
+            title: "Aktivitas hari ini",
+            value: "",
+            custom: (
+              <div className="text-[11px] text-slate-700 space-y-0.5 mt-1">
+                <p><span className="font-semibold">{today.newPipelines}</span> pipeline baru</p>
+                <p><span className="font-semibold">{today.followUps}</span> follow up</p>
+                <p>
+                  <span className="font-semibold">{today.won}</span> won •{" "}
+                  <span className="font-semibold">{today.lost}</span> lost
+                </p>
+              </div>
+            ),
+          },
+        ].map((card, idx) => (
+          <div
+            key={idx}
+            className="flex flex-col gap-1 rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-[0_12px_32px_rgba(15,23,42,0.06)] backdrop-blur"
+          >
+            <p className="text-[11px] font-medium text-slate-500">{card.title}</p>
 
-          <div className="flex flex-col gap-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <p className="text-[11px] font-medium text-slate-500">
-              APE IDR hari ini
-            </p>
-            <h2 className="text-2xl font-semibold text-slate-900 leading-tight">
-              {formatCurrencyIdr(today.apeIdr)}
-            </h2>
-            <p className="text-[11px] text-slate-500">
-              Total APE IDR dari pipeline dengan tanggal hari ini.
-            </p>
-          </div>
+            {card.custom ? (
+              card.custom
+            ) : (
+              <h2 className="text-2xl font-semibold text-slate-900 leading-tight">
+                {card.value}
+              </h2>
+            )}
 
-          <div className="flex flex-col gap-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <p className="text-[11px] font-medium text-slate-500">
-              APE USD hari ini
-            </p>
-            <h2 className="text-2xl font-semibold text-slate-900 leading-tight">
-              {formatCurrencyUsd(today.apeUsd)}
-            </h2>
-            <p className="text-[11px] text-slate-500">
-              Total APE USD dari pipeline dengan tanggal hari ini.
-            </p>
+            <p className="text-[11px] text-slate-500">{card.desc}</p>
           </div>
+        ))}
+      </section>
 
-          <div className="flex flex-col gap-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <p className="text-[11px] font-medium text-slate-500">
-              Aktivitas hari ini
-            </p>
-            <div className="text-[11px] text-slate-700 space-y-0.5">
-              <p>
-                <span className="font-semibold">{today.newPipelines}</span>{' '}
-                pipeline baru
-              </p>
-              <p>
-                <span className="font-semibold">{today.followUps}</span>{' '}
-                follow up
-              </p>
-              <p>
-                <span className="font-semibold">{today.won}</span> won •{' '}
-                <span className="font-semibold">{today.lost}</span> lost
-              </p>
-            </div>
-          </div>
-        </section>
 
         {/* WEEKLY TABLE */}
-        <section className="rounded-2xl border border-white/60 bg-white/90 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur">
+        <section className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-[0_12px_32px_rgba(15,23,42,0.06)] backdrop-blur space-y-3">
           <div className="mb-2 flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
