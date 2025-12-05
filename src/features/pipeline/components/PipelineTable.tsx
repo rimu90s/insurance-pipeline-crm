@@ -3,9 +3,6 @@
 import React, { useMemo, useState } from 'react';
 import { PipelineRow, ProductMaster, MarketerMaster } from '@/types/pipeline';
 import type { DatePreset } from '../hooks/usePipelineFilters';
-import DateRangePicker, {
-  DateRangeValue,
-} from '@/features/pipeline/components/DateRangePicker';
 
 
 interface PipelineTableProps {
@@ -88,10 +85,6 @@ export default function PipelineTable(props: PipelineTableProps) {
     filterLeadSource,
     setFilterLeadSource,
     datePreset,
-    customStartDate,
-setCustomStartDate,
-customEndDate,
-setCustomEndDate,
     setDatePreset,
     exportExcel,
     openDetailModal,
@@ -164,33 +157,37 @@ setCustomEndDate,
   return (
     <div className="space-y-3">
       {/* FILTER BAR */}
-      <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3">
-        {/* Bar atas: label + date filter + search + export */}
+      <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+        {/* Bar atas: label + search + export */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-3">
             <p className="text-[11px] font-medium text-slate-600">
               Filter &amp; segmentasi pipeline
             </p>
-            <DateRangePicker
-  value={{
-    preset: datePreset,
-    startDate: customStartDate ? new Date(customStartDate + 'T00:00:00') : null,
-    endDate: customEndDate ? new Date(customEndDate + 'T00:00:00') : null,
-  }}
-  onChange={(next: DateRangeValue) => {
-  setDatePreset(next.preset);
-  setCustomStartDate(
-    next.startDate ? next.startDate.toISOString().slice(0, 10) : ''
-  );
-  setCustomEndDate(
-    next.endDate ? next.endDate.toISOString().slice(0, 10) : ''
-  );
-}}
-
-/>
-
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
+                  🔍
+                </span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Cari nasabah, branch, marketer…"
+                  className="w-64 rounded-lg border border-slate-200 bg-white pl-7 pr-3 py-1.5 text-[11px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-slate-400"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={exportExcel}
+                className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
+              >
+                Export Excel
+              </button>
           </div>
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             <div className="relative">
               <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
                 🔍
@@ -214,7 +211,7 @@ setCustomEndDate,
             >
               Export Excel
             </button>
-          </div>
+          </div> */}
         </div>
 
         {/* Row filter utama */}
@@ -374,7 +371,7 @@ setCustomEndDate,
               {/* Produk (sticky kiri kedua) */}
               <th
                 scope="col"
-                className="sticky left-[230px] z-20 min-w-[200px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
+                className="min-w-[200px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Produk
               </th>
@@ -493,13 +490,13 @@ setCustomEndDate,
                           {row.customer_name}
                         </span>
                         <span className="text-[11px] text-slate-500">
-                          {row.class ?? '—'}
+                          {row.class ?`Segment ${row.class}`:'—'}
                         </span>
                       </div>
                     </td>
 
                     {/* Produk (sticky kedua) */}
-                    <td className="sticky left-[230px] z-10 min-w-[200px] bg-white px-3 py-2 align-top">
+                    <td className="min-w-[200px] px-3 py-2 align-top">
                       <p className="text-[12px] text-slate-900">
                         {productName}
                       </p>
@@ -534,8 +531,10 @@ setCustomEndDate,
 
                     <td className="px-3 py-2 align-top text-[11px] text-slate-700">
                       <div className="flex flex-col">
-                        <span>{row.status ?? 'prospecting'}</span>
-                        <span className="text-slate-500">
+                        <span className='font-medium capitalize text-slate-800'>
+                          {row.status ?? 'prospecting'}
+                        </span>
+                        <span className="text-slate-500 capitalize">
                           {row.lead_source ?? '—'}
                         </span>
                       </div>
@@ -554,7 +553,7 @@ setCustomEndDate,
                     </td>
 
                     {/* Action (3-dot menu, sticky kanan) */}
-                    <td className="sticky right-0 z-10 bg-white px-3 py-2 text-right align-top">
+                    <td className="sticky right-0 z-10 bg-white/95 px-3 py-2 text-right align-top backdrop-blur">
                       <div className="relative inline-flex">
                         <button
                           type="button"
@@ -563,7 +562,7 @@ setCustomEndDate,
                               openMenuId === row.id ? null : row.id,
                             )
                           }
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-[16px] leading-none text-slate-500 shadow-sm hover:bg-slate-50"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200/70 bg-white text-[14px] leading-none text-slate-500 shadow-sm hover:bg-slate-50"
                         >
                           ⋮
                         </button>
