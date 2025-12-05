@@ -1,13 +1,22 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 type PipelineHeaderProps = {
   userEmail: string | null;
   onLogout: () => void;
 };
 
-export default function PipelineHeader({ userEmail, onLogout }: PipelineHeaderProps) {
+export default function PipelineHeader({
+  userEmail,
+  onLogout,
+}: PipelineHeaderProps) {
+  const pathname = usePathname();
+
+  const isPipeline = pathname === '/dashboard';
+  const isReport = pathname === '/dashboard/report';
+
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
@@ -31,6 +40,32 @@ export default function PipelineHeader({ userEmail, onLogout }: PipelineHeaderPr
             </p>
           </div>
         </div>
+
+        {/* Middle nav: Pipeline / Report */}
+        <nav className="hidden md:flex items-center gap-1 text-[11px] font-medium">
+          <Link
+            href="/dashboard"
+            className={[
+              'rounded-lg px-3 py-1.5 transition-colors',
+              isPipeline
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100',
+            ].join(' ')}
+          >
+            Pipeline
+          </Link>
+          <Link
+            href="/dashboard/report"
+            className={[
+              'rounded-lg px-3 py-1.5 transition-colors',
+              isReport
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100',
+            ].join(' ')}
+          >
+            Daily report
+          </Link>
+        </nav>
 
         {/* User section */}
         <div className="flex items-center gap-3">
@@ -56,6 +91,32 @@ export default function PipelineHeader({ userEmail, onLogout }: PipelineHeaderPr
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Mobile nav (opsional sederhana) */}
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-center gap-1 px-4 pb-2 pt-1 md:hidden">
+        <Link
+          href="/dashboard"
+          className={[
+            'flex-1 rounded-lg px-3 py-1.5 text-center text-[11px] font-medium transition-colors',
+            isPipeline
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'bg-white text-slate-600 border border-slate-200',
+          ].join(' ')}
+        >
+          Pipeline
+        </Link>
+        <Link
+          href="/dashboard/report"
+          className={[
+            'flex-1 rounded-lg px-3 py-1.5 text-center text-[11px] font-medium transition-colors',
+            isReport
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'bg-white text-slate-600 border border-slate-200',
+          ].join(' ')}
+        >
+          Daily report
+        </Link>
       </div>
     </header>
   );
