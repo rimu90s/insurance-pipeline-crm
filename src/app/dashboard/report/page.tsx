@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuthUser } from '../hooks/useAuthUser';
 import {
-  usePipelines,
+  usePipelines, ReportDatePreset
 } from '@/features/pipeline';
 import PipelineHeader from '../components/PipelineHeader';
 import { useDailyReport, WeeklyRow } from '@/features/pipeline/hooks/useDailyReport';
@@ -17,6 +18,7 @@ function formatCurrencyUsd(value: number) {
 
 export default function DailyReportPage() {
   const { loadingUser, userEmail, userId, logout } = useAuthUser();
+  const [preset, setPreset] = useState<"today" | "yesterday" | "7d" | "30d">("today");
 
   const {
     pipelines,
@@ -25,7 +27,7 @@ export default function DailyReportPage() {
 
   const loading = loadingUser || loadingPipelines;
 
-  const report = useDailyReport(pipelines);
+  const report = useDailyReport(pipelines, preset);
 
   if (loading) {
     return (
@@ -56,7 +58,8 @@ export default function DailyReportPage() {
             Ringkasan performa pipeline hari ini dan tren 7 hari terakhir.
           </p>
         </section>
-
+        {/* Date preset bar */}
+        <ReportDatePreset preset={preset} setPreset={setPreset} />
         {/* TODAY SUMMARY */}
         <section className="grid gap-4 md:grid-cols-4">
         {[
