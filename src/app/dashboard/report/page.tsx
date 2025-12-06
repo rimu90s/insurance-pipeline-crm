@@ -44,6 +44,48 @@ export default function DailyReportPage() {
 
   const { today, weekly } = report;
 
+  // ─────────────────────────────────────────────
+  //  Simple insight dari data today + weekly
+  // ─────────────────────────────────────────────
+
+  let totalRangePipeline = 0;
+  let totalRangeWon = 0;
+  let totalRangeLost = 0;
+
+  for (const row of weekly) {
+    totalRangePipeline += row.totalPipeline;
+    totalRangeWon += row.won;
+    totalRangeLost += row.lost;
+  }
+
+  const days = weekly.length || 1;
+  const avgPipelinePerDay = totalRangePipeline / days;
+
+  const anchorRow = weekly.length > 0 ? weekly[weekly.length - 1] : null;
+
+  let headline = 'Belum ada data pada periode ini.';
+  let subline = 'Tambahkan pipeline baru untuk mulai melihat tren harian.';
+
+  if (anchorRow && totalRangePipeline > 0) {
+    const ratio =
+      avgPipelinePerDay > 0
+        ? anchorRow.totalPipeline / avgPipelinePerDay
+        : 1;
+
+    if (ratio >= 1.25) {
+      headline = 'Aktivitas pipeline hari ini di atas rata-rata periode.';
+    } else if (ratio <= 0.75) {
+      headline = 'Aktivitas pipeline hari ini di bawah rata-rata periode.';
+    } else {
+      headline = 'Aktivitas pipeline hari ini mendekati rata-rata periode.';
+    }
+
+    subline = [
+      `Periode ini: ${totalRangePipeline} pipeline (rata-rata ${avgPipelinePerDay.toFixed(1)} per hari).`,
+      `Won: ${totalRangeWon}, Lost: ${totalRangeLost}.`,
+    ].join(' ');
+  }
+
   return (
     <div className="min-h-screen">
       <PipelineHeader userEmail={userEmail} onLogout={logout} />
@@ -60,6 +102,18 @@ export default function DailyReportPage() {
         </section>
         {/* Date preset bar */}
         <ReportDatePreset preset={preset} setPreset={setPreset} />
+        {/* Insight singkat */}
+        <section className="rounded-2xl border border-white/60 bg-slate-900 text-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.10)]">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+            Insight singkat
+          </p>
+          <h2 className="mt-1 text-sm font-semibold">
+            {headline}
+          </h2>
+          <p className="mt-1 text-[11px] text-slate-200">
+            {subline}
+          </p>
+        </section>
         {/* TODAY SUMMARY */}
         <section className="grid gap-4 md:grid-cols-4">
         {[
