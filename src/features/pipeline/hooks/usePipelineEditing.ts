@@ -9,14 +9,55 @@ type UsePipelineEditingArgs = {
   setPipelines: React.Dispatch<React.SetStateAction<PipelineRow[]>>;
 };
 
+function parseMoneyInput(input: string): number | null {
+  const raw = (input ?? '').trim();
+  if (!raw) return null;
+
+  const cleaned = raw.replace(/[^\d.,-]/g, '');
+  const hasDot = cleaned.includes('.');
+  const hasComma = cleaned.includes(',');
+
+  let normalized = cleaned;
+
+  if (hasDot && hasComma) {
+    const lastDot = cleaned.lastIndexOf('.');
+    const lastComma = cleaned.lastIndexOf(',');
+    if (lastDot > lastComma) {
+      normalized = cleaned.replace(/,/g, '');
+    } else {
+      normalized = cleaned.replace(/\./g, '').replace(/,/g, '.');
+    }
+  } else if (hasComma && !hasDot) {
+    const parts = cleaned.split(',');
+    if (parts.length > 2) {
+      normalized = cleaned.replace(/,/g, '');
+    } else if (parts.length === 2 && parts[1].length === 3) {
+      normalized = cleaned.replace(/,/g, '');
+    } else {
+      normalized = cleaned.replace(/,/g, '.');
+    }
+  } else if (hasDot && !hasComma) {
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      normalized = cleaned.replace(/\./g, '');
+    } else if (parts.length === 2 && parts[1].length === 3) {
+      normalized = cleaned.replace(/\./g, '');
+    } else {
+      normalized = cleaned;
+    }
+  }
+
+  const num = Number(normalized);
+  if (!Number.isFinite(num)) return null;
+  return num;
+}
+
 export function usePipelineEditing({
   userId,
   reloadPipelines,
   setPipelines,
 }: UsePipelineEditingArgs) {
-  const [selectedPipeline, setSelectedPipeline] = useState<PipelineRow | null>(
-    null
-  );
+  const [selectedPipeline, setSelectedPipeline] = useState<PipelineRow | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState<PipelineEditForm | null>(null);
@@ -24,7 +65,6 @@ export function usePipelineEditing({
   const [editError, setEditError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // buka modal detail (mode view dulu)
   const openDetailModal = (row: PipelineRow) => {
     setSelectedPipeline(row);
     setShowDetailModal(true);
@@ -53,12 +93,8 @@ export function usePipelineEditing({
       customer_name: selectedPipeline.customer_name,
       branch: selectedPipeline.branch ?? '',
       class: selectedPipeline.class ?? '',
-      ape_idr: selectedPipeline.ape_idr
-        ? String(selectedPipeline.ape_idr)
-        : '',
-      ape_usd: selectedPipeline.ape_usd
-        ? String(selectedPipeline.ape_usd)
-        : '',
+      ape_idr: selectedPipeline.ape_idr != null ? String(selectedPipeline.ape_idr) : '',
+      ape_usd: selectedPipeline.ape_usd != null ? String(selectedPipeline.ape_usd) : '',
       execution_plan: selectedPipeline.execution_plan ?? 'week 1',
       quadrant: selectedPipeline.quadrant ?? 'k1',
       remarks: selectedPipeline.remarks ?? '',
@@ -86,12 +122,8 @@ export function usePipelineEditing({
     setEditError(null);
 
     try {
-      const parsedApeIdr = editForm.ape_idr
-        ? parseFloat(editForm.ape_idr.replace(/,/g, ''))
-        : 0;
-      const parsedApeUsd = editForm.ape_usd
-        ? parseFloat(editForm.ape_usd.replace(/,/g, ''))
-        : 0;
+      const parsedApeIdr = parseMoneyInput(editForm.ape_idr);
+      const parsedApeUsd = parseMoneyInput(editForm.ape_usd);
 
       const { error } = await supabase
         .from('pipelines')
@@ -130,21 +162,15 @@ export function usePipelineEditing({
     }
   };
 
-  // helper internal untuk delete dari DB + state
   const deletePipeline = async (row: PipelineRow) => {
-    const { error } = await supabase
-      .from('pipelines')
-      .delete()
-      .eq('id', row.id);
+    const { error } = await supabase.from('pipelines').delete().eq('id', row.id);
 
-    if (error) {
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
 
     setPipelines((prev) => prev.filter((p) => p.id !== row.id));
   };
 
-    const handleDelete = async () => {
+  const handleDelete = async () => {
     if (!selectedPipeline) return;
 
     const ok = window.confirm(
@@ -159,30 +185,27 @@ export function usePipelineEditing({
       await deletePipeline(selectedPipeline);
       closeDetailModal();
     } catch (e: unknown) {
-      if (e instanceof Error) {
-        setEditError(e.message);
-      } else {
-        setEditError('Gagal menghapus pipeline.');
-      }
+      if (e instanceof Error) setEditError(e.message);
+      else setEditError('Gagal menghapus pipeline.');
     } finally {
       setDeleting(false);
     }
   };
-
 
   const handleEditFromTable = (row: PipelineRow) => {
     setSelectedPipeline(row);
     setShowDetailModal(true);
     setEditMode(true);
     setEditError(null);
+
     setEditForm({
       product_id: row.product_id,
       marketer_id: row.marketer_id ?? '',
       customer_name: row.customer_name,
       branch: row.branch ?? '',
       class: row.class ?? '',
-      ape_idr: row.ape_idr ? String(row.ape_idr) : '',
-      ape_usd: row.ape_usd ? String(row.ape_usd) : '',
+      ape_idr: row.ape_idr != null ? String(row.ape_idr) : '',
+      ape_usd: row.ape_usd != null ? String(row.ape_usd) : '',
       execution_plan: row.execution_plan ?? 'week 1',
       quadrant: row.quadrant ?? 'k1',
       remarks: row.remarks ?? '',
@@ -197,23 +220,17 @@ export function usePipelineEditing({
     });
   };
 
-    const handleDeleteFromTable = async (row: PipelineRow) => {
-    const ok = window.confirm(
-      `Yakin ingin menghapus pipeline untuk nasabah "${row.customer_name}"?`
-    );
+  const handleDeleteFromTable = async (row: PipelineRow) => {
+    const ok = window.confirm(`Yakin ingin menghapus pipeline untuk nasabah "${row.customer_name}"?`);
     if (!ok) return;
 
     try {
       await deletePipeline(row);
     } catch (e: unknown) {
-      if (e instanceof Error) {
-        alert(e.message);
-      } else {
-        alert('Terjadi kesalahan saat menghapus data.');
-      }
+      if (e instanceof Error) alert(e.message);
+      else alert('Terjadi kesalahan saat menghapus data.');
     }
   };
-
 
   return {
     selectedPipeline,
