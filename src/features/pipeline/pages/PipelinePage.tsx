@@ -22,6 +22,7 @@ import { useAuthUser } from '@/app/dashboard/hooks/useAuthUser';
 import DateRangePicker, { DateRangeValue } from '@/features/pipeline/components/DateRangePicker';
 import Toast from '@/app/dashboard/components/Toast';
 import PipelineHeader from '@/app/dashboard/components/PipelineHeader';
+import { usePipelinesRealtime } from '@/features/pipeline/hooks/usePipelinesRealtime';
 
 function formatDateLocalYYYYMMDD(d: Date): string {
   const year = d.getFullYear();
@@ -38,8 +39,25 @@ export default function PipelinePage() {
   const { products, loadingProducts } = useProducts();
   const { marketers, loadingMarketers } = useMarketers();
   const { pipelines, setPipelines, loadingPipelines, reloadPipelines } = usePipelines(userId);
+  usePipelinesRealtime({ userId, onChange: reloadPipelines });
+//   usePipelinesRealtime({
+//   userId,
+//   onChange: reloadPipelines,
+//   onStatus: (s) => {
+//     // biar kelihatan di UI dulu (sementara debug)
+//     showToast(`Realtime: ${s}`, s === 'SUBSCRIBED' ? 'success' : 'error');
+//   },
+// });
 
   const loadingData = loadingProducts || loadingMarketers || loadingPipelines;
+
+    // Toast kecil untuk notifikasi
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   // 3a. STATE: Modal create pipeline (tambah baru)
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -149,14 +167,6 @@ export default function PipelinePage() {
       showToast('Pipeline baru berhasil disimpan.', 'success');
       setShowCreateModal(false);
     }
-  };
-
-  // Toast kecil untuk notifikasi
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3000);
   };
 
   // Helper nama produk & marketer dari id (untuk export + WA)
