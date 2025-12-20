@@ -7,6 +7,13 @@ import type { DateRangePreset } from '../components/DateRangePicker';
 // Preset tanggal yang dipakai di seluruh sistem
 export type DatePreset = DateRangePreset;
 
+function toLocalYYYYMMDD(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function usePipelineFilters(pipelines: PipelineRow[]) {
   const [filterProductId, setFilterProductId] = useState<string>('');
   const [filterPlan, setFilterPlan] = useState<string>('');
@@ -28,36 +35,30 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
     const applyDateFilter = (row: PipelineRow): boolean => {
       const dateStr = row.pipeline_date; // YYYY-MM-DD atau null
 
-      // Jika tidak ada tanggal, kita exclude dari semua preset
+      // Jika tidak ada tanggal, exclude
       if (!dateStr) return false;
 
-      // Hitung "hari ini" di zona lokal
+      // "hari ini" versi lokal (timezone-safe, tanpa UTC shift)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().slice(0, 10);
+      const todayStr = toLocalYYYYMMDD(today);
 
+      // ── Custom range: pakai string compare (paling stabil untuk YYYY-MM-DD)
       if (datePreset === 'custom') {
-        // custom tanpa input apa pun → anggap semua tanggal lolos
+        // custom tanpa input apa pun → semua tanggal lolos
         if (!customStartDate && !customEndDate) return true;
 
-        const d = new Date(dateStr + 'T00:00:00');
-        const start = customStartDate
-          ? new Date(customStartDate + 'T00:00:00')
-          : null;
-        const end = customEndDate
-          ? new Date(customEndDate + 'T23:59:59')
-          : null;
-
-        if (start && d < start) return false;
-        if (end && d > end) return false;
+        if (customStartDate && dateStr < customStartDate) return false;
+        if (customEndDate && dateStr > customEndDate) return false;
         return true;
       }
 
-      // Preset harian / rolling N hari
+      // ── Preset "today" (string compare, aman)
       if (datePreset === 'today') {
         return dateStr === todayStr;
       }
 
+      // Untuk rolling window, kita pakai Date lokal tapi "todayStr" sudah aman.
       const d = new Date(dateStr + 'T00:00:00');
       d.setHours(0, 0, 0, 0);
 
@@ -69,7 +70,6 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
         case 'yesterday':
           return diffDays === 1;
         case '7d':
-          // 0..6 hari ke belakang (termasuk hari ini)
           return diffDays >= 0 && diffDays <= 6;
         case '14d':
           return diffDays >= 0 && diffDays <= 13;
@@ -138,17 +138,13 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
     customEndDate,
   ]);
 
-  const totalApeIdr = useMemo(
-    () =>
-      filteredPipelines.reduce((sum, row) => sum + (row.ape_idr ?? 0), 0),
-    [filteredPipelines]
-  );
+  const totalApeIdr = useMemo(() => {
+    return filteredPipelines.reduce((sum, row) => sum + (row.ape_idr ?? 0), 0);
+  }, [filteredPipelines]);
 
-  const totalApeUsd = useMemo(
-    () =>
-      filteredPipelines.reduce((sum, row) => sum + (row.ape_usd ?? 0), 0),
-    [filteredPipelines]
-  );
+  const totalApeUsd = useMemo(() => {
+    return filteredPipelines.reduce((sum, row) => sum + (row.ape_usd ?? 0), 0);
+  }, [filteredPipelines]);
 
   const resetFilters = () => {
     setFilterProductId('');
@@ -158,6 +154,7 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
     setFilterPriority('');
     setFilterStatus('');
     setFilterLeadSource('');
+
     setDatePreset('today');
     setCustomStartDate('');
     setCustomEndDate('');
