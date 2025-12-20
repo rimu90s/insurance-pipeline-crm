@@ -19,10 +19,10 @@ import {
 
 import { PipelineRow } from '@/types/pipeline';
 import { buildWhatsAppMessage } from '@/utils/whatsapp';
-import { useAuthUser } from '../hooks/useAuthUser';
+import { useAuthUser } from '../../../app/dashboard/hooks/useAuthUser';
 import DateRangePicker, {DateRangeValue,} from '@/features/pipeline/components/DateRangePicker';
-import Toast from './Toast';
-import PipelineHeader from './PipelineHeader';
+import Toast from '../../../app/dashboard/components/Toast';
+import PipelineHeader from '../../../app/dashboard/components/PipelineHeader';
 
 function formatDateLocalYYYYMMDD(d: Date): string {
   const year = d.getFullYear();

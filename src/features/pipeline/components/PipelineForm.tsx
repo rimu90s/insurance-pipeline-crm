@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import FormSection from './FormSection';
+import FormSection from './PipelineFormSection';
 
 
 // Tipe lokal sederhana (mengikuti struktur dari hooks)
