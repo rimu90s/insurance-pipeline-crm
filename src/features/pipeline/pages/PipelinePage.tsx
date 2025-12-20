@@ -39,15 +39,7 @@ export default function PipelinePage() {
   const { products, loadingProducts } = useProducts();
   const { marketers, loadingMarketers } = useMarketers();
   const { pipelines, setPipelines, loadingPipelines, reloadPipelines } = usePipelines(userId);
-  usePipelinesRealtime({ userId, onChange: reloadPipelines });
-//   usePipelinesRealtime({
-//   userId,
-//   onChange: reloadPipelines,
-//   onStatus: (s) => {
-//     // biar kelihatan di UI dulu (sementara debug)
-//     showToast(`Realtime: ${s}`, s === 'SUBSCRIBED' ? 'success' : 'error');
-//   },
-// });
+  usePipelinesRealtime({ userId, onChange: reloadPipelines, debounceMs: 500 });
 
   const loadingData = loadingProducts || loadingMarketers || loadingPipelines;
 
