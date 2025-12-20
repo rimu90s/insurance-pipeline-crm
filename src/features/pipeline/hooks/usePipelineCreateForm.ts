@@ -12,57 +12,39 @@ function parseMoneyInput(input: string): number | null {
   const raw = (input ?? '').trim();
   if (!raw) return null;
 
-  // ambil hanya digit, koma, titik, minus
   const cleaned = raw.replace(/[^\d.,-]/g, '');
-
-  // kasus umum Indonesia: "1.000.000" -> "1000000"
-  // jika ada koma dan titik sekaligus, biasanya koma untuk decimal (en-US) atau ID? kita ambil aman:
-  // - jika format "1,234.56" => hapus koma (thousands) -> "1234.56"
-  // - jika format "1.234,56" => hapus titik (thousands) lalu ganti koma jadi titik -> "1234.56"
   const hasDot = cleaned.includes('.');
   const hasComma = cleaned.includes(',');
 
   let normalized = cleaned;
 
   if (hasDot && hasComma) {
-    // tentukan mana decimal separator: lihat yang paling kanan
     const lastDot = cleaned.lastIndexOf('.');
     const lastComma = cleaned.lastIndexOf(',');
-
-    if (lastDot > lastComma) {
-      // dot sebagai decimal, koma sebagai ribuan
-      normalized = cleaned.replace(/,/g, '');
-    } else {
-      // koma sebagai decimal, titik sebagai ribuan
-      normalized = cleaned.replace(/\./g, '').replace(/,/g, '.');
-    }
+    if (lastDot > lastComma) normalized = cleaned.replace(/,/g, '');
+    else normalized = cleaned.replace(/\./g, '').replace(/,/g, '.');
   } else if (hasComma && !hasDot) {
-    // "1000,5" => decimal comma -> ganti ke dot
-    // tapi kalau "1,000,000" (comma ribuan) itu juga mungkin.
-    // heuristik: jika setelah koma ada 3 digit dan ada beberapa koma -> treat sebagai ribuan
     const parts = cleaned.split(',');
-    if (parts.length > 2) {
-      normalized = cleaned.replace(/,/g, '');
-    } else if (parts.length === 2 && parts[1].length === 3) {
-      normalized = cleaned.replace(/,/g, '');
-    } else {
-      normalized = cleaned.replace(/,/g, '.');
-    }
+    if (parts.length > 2) normalized = cleaned.replace(/,/g, '');
+    else if (parts.length === 2 && parts[1].length === 3) normalized = cleaned.replace(/,/g, '');
+    else normalized = cleaned.replace(/,/g, '.');
   } else if (hasDot && !hasComma) {
-    // "1.000.000" -> ribuan (hapus semua dot) jika pattern ribuan
     const parts = cleaned.split('.');
-    if (parts.length > 2) {
-      normalized = cleaned.replace(/\./g, '');
-    } else if (parts.length === 2 && parts[1].length === 3) {
-      normalized = cleaned.replace(/\./g, '');
-    } else {
-      normalized = cleaned; // kemungkinan decimal dot
-    }
+    if (parts.length > 2) normalized = cleaned.replace(/\./g, '');
+    else if (parts.length === 2 && parts[1].length === 3) normalized = cleaned.replace(/\./g, '');
   }
 
   const num = Number(normalized);
   if (!Number.isFinite(num)) return null;
   return num;
+}
+
+function todayYYYYMMDD(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function usePipelineCreateForm({ userId, reloadPipelines }: UsePipelineCreateFormArgs) {
@@ -77,7 +59,9 @@ export function usePipelineCreateForm({ userId, reloadPipelines }: UsePipelineCr
   const [quadrant, setQuadrant] = useState('k1');
   const [remarks, setRemarks] = useState('');
   const [priorityFlag, setPriorityFlag] = useState(false);
-  const [pipelineDate, setPipelineDate] = useState<string>('');
+
+  // ✅ DEFAULT tanggal: hari ini
+  const [pipelineDate, setPipelineDate] = useState<string>(todayYYYYMMDD());
 
   const [status, setStatus] = useState<string>('prospecting');
   const [leadSource, setLeadSource] = useState<string>('referral');
@@ -101,7 +85,10 @@ export function usePipelineCreateForm({ userId, reloadPipelines }: UsePipelineCr
     setQuadrant('k1');
     setRemarks('');
     setPriorityFlag(false);
-    setPipelineDate('');
+
+    // ✅ RESET tetap hari ini (biar masuk filter "today")
+    setPipelineDate(todayYYYYMMDD());
+
     setFormError(null);
 
     setStatus('prospecting');
@@ -126,6 +113,9 @@ export function usePipelineCreateForm({ userId, reloadPipelines }: UsePipelineCr
       return false;
     }
 
+    // ✅ Safety: pastikan tanggal tidak kosong (kalau user hapus manual)
+    const safePipelineDate = (pipelineDate || todayYYYYMMDD()).trim();
+
     setSaving(true);
 
     try {
@@ -139,13 +129,16 @@ export function usePipelineCreateForm({ userId, reloadPipelines }: UsePipelineCr
         customer_name: customerName,
         branch: branch || null,
         class: customerClass || null,
-        ape_idr: parsedApeIdr, // number | null
-        ape_usd: parsedApeUsd, // number | null
+        ape_idr: parsedApeIdr,
+        ape_usd: parsedApeUsd,
         execution_plan: executionPlan,
         quadrant: quadrant,
         remarks: remarks || null,
         priority_flag: priorityFlag,
-        pipeline_date: pipelineDate || null,
+
+        // ✅ jangan biarkan null by default
+        pipeline_date: safePipelineDate,
+
         status: status || 'prospecting',
         lead_source: leadSource || 'referral',
         expected_closing_date: expectedClosingDate || null,
