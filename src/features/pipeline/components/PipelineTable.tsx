@@ -432,7 +432,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                     key={row.id}
                     className={
                       'border-b border-slate-100 text-xs transition-colors hover:bg-slate-50 ' +
-                      (isRecent ? 'bg-amber-50/80' : '')
+                      (isRecent ? 'bg-amber-50/80 animate-pulse-once' : '')
                     }
                   >
                     <td className="sticky left-0 z-10 bg-white px-3 py-2 align-top">
