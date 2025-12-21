@@ -8,40 +8,45 @@ import type { PipelineRow } from '@/types/pipeline';
 type Args = {
   userId: string | null | undefined;
   setPipelines: React.Dispatch<React.SetStateAction<PipelineRow[]>>;
+
+  // optional: untuk highlight row di UI (PipelinePage)
+  onTouchedId?: (id: string) => void;
 };
 
-// payload.new / payload.old bisa {} → kita perlu type guard
+// payload.new / payload.old kadang bertipe {} → type guard minimal
 function hasId(value: unknown): value is { id: string } {
   if (!value || typeof value !== 'object') return false;
   return 'id' in value && typeof (value as { id?: unknown }).id === 'string';
 }
 
+// validasi minimal bentuk PipelineRow (supaya aman dari {} / partial)
 function isPipelineRow(value: unknown): value is PipelineRow {
-  // minimal check: punya id, owner_id, product_id, customer_name
   if (!value || typeof value !== 'object') return false;
-
   const v = value as Record<string, unknown>;
+
   return (
     typeof v.id === 'string' &&
-    // owner_id ada di table kamu (dipakai di query .eq('owner_id', userId))
-    ('owner_id' in v) &&
     typeof v.product_id === 'string' &&
-    typeof v.customer_name === 'string'
+    typeof v.customer_name === 'string' &&
+    // owner_id harus ada di tabel kamu, karena query kamu pakai owner_id
+    'owner_id' in v
   );
 }
 
+// sort: tanggal terbaru di atas (null paling bawah)
 function sortByPipelineDateDesc(a: PipelineRow, b: PipelineRow) {
-  // null dianggap paling bawah
   const ad = a.pipeline_date ?? '';
   const bd = b.pipeline_date ?? '';
+
   if (ad === bd) return 0;
   if (!ad) return 1;
   if (!bd) return -1;
-  // format YYYY-MM-DD → string compare aman
+
+  // YYYY-MM-DD → string compare aman
   return bd.localeCompare(ad);
 }
 
-export function usePipelinesRealtimePatch({ userId, setPipelines }: Args) {
+export function usePipelinesRealtimePatch({ userId, setPipelines, onTouchedId }: Args) {
   useEffect(() => {
     if (!userId) return;
 
@@ -57,61 +62,63 @@ export function usePipelinesRealtimePatch({ userId, setPipelines }: Args) {
 
           const event = payload.eventType;
 
-          // Ambil kandidat row dari payload
-          const newRowRaw = payload.new;
-          const oldRowRaw = payload.old;
+          const newRaw = payload.new;
+          const oldRaw = payload.old;
 
-          const newRow = isPipelineRow(newRowRaw) ? newRowRaw : null;
-          const oldRow = isPipelineRow(oldRowRaw) ? oldRowRaw : null;
+          const newRow = isPipelineRow(newRaw) ? newRaw : null;
+          const oldRow = isPipelineRow(oldRaw) ? oldRaw : null;
 
-          // owner_id ada di row DB (kamu pakai di query). Kita akses aman via Record.
           const newOwner =
-            newRow && (newRow as unknown as { owner_id?: string | null }).owner_id
-              ? (newRow as unknown as { owner_id?: string | null }).owner_id
+            newRow && typeof (newRow as unknown as { owner_id?: unknown }).owner_id !== 'undefined'
+              ? ((newRow as unknown as { owner_id?: string | null }).owner_id ?? null)
               : null;
 
           const oldOwner =
-            oldRow && (oldRow as unknown as { owner_id?: string | null }).owner_id
-              ? (oldRow as unknown as { owner_id?: string | null }).owner_id
+            oldRow && typeof (oldRow as unknown as { owner_id?: unknown }).owner_id !== 'undefined'
+              ? ((oldRow as unknown as { owner_id?: string | null }).owner_id ?? null)
               : null;
 
-          // Kita patch hanya kalau menyangkut user ini
+          // hanya patch kalau event menyangkut user ini
           const touchesMe = newOwner === userId || oldOwner === userId;
           if (!touchesMe) return;
 
+          // id yang “tersentuh” untuk highlight (opsional)
+          const touchedId =
+            (event === 'DELETE'
+              ? oldRow?.id ?? (hasId(oldRaw) ? oldRaw.id : null)
+              : newRow?.id ?? (hasId(newRaw) ? newRaw.id : null)) ?? null;
+
+          if (touchedId) onTouchedId?.(touchedId);
+
           setPipelines((prev) => {
-            // DELETE: payload.old biasanya berisi row
+            // DELETE
             if (event === 'DELETE') {
-              if (!oldRow && hasId(oldRowRaw)) {
-                return prev.filter((p) => p.id !== oldRowRaw.id);
-              }
               if (oldRow) return prev.filter((p) => p.id !== oldRow.id);
+              if (hasId(oldRaw)) return prev.filter((p) => p.id !== oldRaw.id);
               return prev;
             }
 
             // INSERT / UPDATE
-            if (!newRow && hasId(newRowRaw)) {
-              // tidak bisa patch detail kalau row tidak lengkap → skip (jarang)
+            if (!newRow) {
+              // jika payload.new tidak lengkap → skip (jarang terjadi)
               return prev;
             }
 
-            if (!newRow) return prev;
-
-            // Kalau row pindah owner (misal update owner_id), dan sekarang bukan milik user ini → hapus dari state
+            // Kalau row pindah owner dan sekarang bukan milik user ini → remove
             if (newOwner !== userId) {
               return prev.filter((p) => p.id !== newRow.id);
             }
 
             const idx = prev.findIndex((p) => p.id === newRow.id);
 
-            // INSERT (atau UPDATE tapi belum ada di state): upsert
+            // upsert
             if (idx === -1) {
               const next = [newRow, ...prev];
               next.sort(sortByPipelineDateDesc);
               return next;
             }
 
-            // UPDATE: replace row
+            // replace
             const next = [...prev];
             next[idx] = newRow;
             next.sort(sortByPipelineDateDesc);
@@ -125,5 +132,5 @@ export function usePipelinesRealtimePatch({ userId, setPipelines }: Args) {
       alive = false;
       void supabase.removeChannel(channel);
     };
-  }, [userId, setPipelines]);
+  }, [userId, setPipelines, onTouchedId]);
 }

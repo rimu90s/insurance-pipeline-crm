@@ -41,11 +41,13 @@ interface PipelineTableProps {
   onDeleteRow: (row: PipelineRow) => void;
   onCopyWARow: (row: PipelineRow) => void;
   onResetFilters: () => void;
+
+  // highlight row realtime
+  recentIds?: Record<string, number>;
 }
 
 const PAGE_SIZE = 10;
 
-// Helper kecil
 const formatCurrencyIdr = (value: number | null) => {
   if (!value) return 'Rp 0';
   return `Rp ${value.toLocaleString('id-ID')}`;
@@ -87,16 +89,14 @@ export default function PipelineTable(props: PipelineTableProps) {
     onDeleteRow,
     onCopyWARow,
     onResetFilters,
+
+    recentIds,
   } = props;
 
-  // Search & pagination state
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-
-  // Menu action per-row (3-dot)
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null);
 
-  // Helper nama produk & marketer
   const getProductName = (id: string) => {
     const p = products.find((item) => item.id === id);
     return p ? p.name : '-';
@@ -108,7 +108,6 @@ export default function PipelineTable(props: PipelineTableProps) {
     return m ? m.name : '-';
   };
 
-  // Filter search di atas filteredPipelines dari parent
   const rowsAfterSearch = (() => {
     if (!search.trim()) return filteredPipelines;
 
@@ -129,7 +128,6 @@ export default function PipelineTable(props: PipelineTableProps) {
     });
   })();
 
-  // Pagination
   const totalRows = rowsAfterSearch.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -145,19 +143,11 @@ export default function PipelineTable(props: PipelineTableProps) {
     setOpenMenuId(null);
   };
 
-  // ─────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────
-
   return (
     <div className="space-y-3">
-      {/* FILTER BAR */}
       <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
-        {/* Bar atas: label + search + export */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[11px] font-medium text-slate-600">
-            Filter &amp; segmentasi pipeline
-          </p>
+          <p className="text-[11px] font-medium text-slate-600">Filter &amp; segmentasi pipeline</p>
 
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -186,9 +176,7 @@ export default function PipelineTable(props: PipelineTableProps) {
           </div>
         </div>
 
-        {/* Row filter utama */}
         <div className="grid gap-2 md:grid-cols-4 lg:grid-cols-7">
-          {/* Produk */}
           <select
             value={filterProductId}
             onChange={(e) => {
@@ -205,7 +193,6 @@ export default function PipelineTable(props: PipelineTableProps) {
             ))}
           </select>
 
-          {/* Marketer */}
           <select
             value={filterMarketerId}
             onChange={(e) => {
@@ -222,7 +209,6 @@ export default function PipelineTable(props: PipelineTableProps) {
             ))}
           </select>
 
-          {/* Plan */}
           <select
             value={filterPlan}
             onChange={(e) => {
@@ -238,7 +224,6 @@ export default function PipelineTable(props: PipelineTableProps) {
             <option value="week 4">Week 4</option>
           </select>
 
-          {/* Quadrant */}
           <select
             value={filterQuadrant}
             onChange={(e) => {
@@ -254,7 +239,6 @@ export default function PipelineTable(props: PipelineTableProps) {
             <option value="k4">K4</option>
           </select>
 
-          {/* Prioritas */}
           <select
             value={filterPriority}
             onChange={(e) => {
@@ -268,7 +252,6 @@ export default function PipelineTable(props: PipelineTableProps) {
             <option value="normal">Normal</option>
           </select>
 
-          {/* Status & Source */}
           <div className="flex gap-2">
             <select
               value={filterStatus}
@@ -318,14 +301,11 @@ export default function PipelineTable(props: PipelineTableProps) {
           </button>
 
           <p className="text-[11px] text-slate-500">
-            Menampilkan{' '}
-            <span className="font-semibold text-slate-700">{totalRows}</span>{' '}
-            pipeline (sebelum pagination)
+            Menampilkan <span className="font-semibold text-slate-700">{totalRows}</span> pipeline (sebelum pagination)
           </p>
         </div>
       </div>
 
-      {/* TABLE WRAPPER */}
       <div className="overflow-x-auto">
         <table className="min-w-full border-separate border-spacing-0 text-xs">
           <thead>
@@ -405,19 +385,13 @@ export default function PipelineTable(props: PipelineTableProps) {
           <tbody>
             {loading ? (
               <tr>
-                <td
-                  colSpan={10}
-                  className="border-b border-slate-100 px-3 py-6 text-center text-[11px] text-slate-500"
-                >
+                <td colSpan={10} className="border-b border-slate-100 px-3 py-6 text-center text-[11px] text-slate-500">
                   Memuat data pipeline…
                 </td>
               </tr>
             ) : pagedRows.length === 0 ? (
               <tr>
-                <td
-                  colSpan={10}
-                  className="border-b border-slate-100 px-3 py-6 text-center text-[11px] text-slate-500"
-                >
+                <td colSpan={10} className="border-b border-slate-100 px-3 py-6 text-center text-[11px] text-slate-500">
                   <div className="flex flex-col items-center gap-2">
                     <p className="text-[11px] text-slate-500">
                       {datePreset === 'today'
@@ -451,19 +425,20 @@ export default function PipelineTable(props: PipelineTableProps) {
                 const marketerName = getMarketerName(row.marketer_id);
                 const isPrioritas = !!row.priority_flag;
 
+                const isRecent = !!recentIds?.[row.id];
+
                 return (
                   <tr
                     key={row.id}
-                    className="border-b border-slate-100 text-xs transition-colors hover:bg-slate-50"
+                    className={
+                      'border-b border-slate-100 text-xs transition-colors hover:bg-slate-50 ' +
+                      (isRecent ? 'bg-amber-50/80' : '')
+                    }
                   >
                     <td className="sticky left-0 z-10 bg-white px-3 py-2 align-top">
                       <div className="flex flex-col">
-                        <span className="text-[12px] font-semibold text-slate-900">
-                          {row.customer_name}
-                        </span>
-                        <span className="text-[11px] text-slate-500">
-                          {row.class ? `Segment ${row.class}` : '—'}
-                        </span>
+                        <span className="text-[12px] font-semibold text-slate-900">{row.customer_name}</span>
+                        <span className="text-[11px] text-slate-500">{row.class ? `Segment ${row.class}` : '—'}</span>
                       </div>
                     </td>
 
@@ -471,9 +446,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                       <p className="text-[12px] text-slate-900">{productName}</p>
                     </td>
 
-                    <td className="px-3 py-2 align-top text-[11px] text-slate-700">
-                      {row.branch ?? '—'}
-                    </td>
+                    <td className="px-3 py-2 align-top text-[11px] text-slate-700">{row.branch ?? '—'}</td>
 
                     <td className="px-3 py-2 align-top text-right text-[11px] font-semibold text-slate-900">
                       {formatCurrencyIdr(row.ape_idr ?? 0)}
@@ -484,25 +457,16 @@ export default function PipelineTable(props: PipelineTableProps) {
                     </td>
 
                     <td className="px-3 py-2 align-top text-[11px] text-slate-700">
-                      <span className="font-medium">
-                        {row.execution_plan ?? 'Week 1'}
-                      </span>{' '}
-                      •{' '}
+                      <span className="font-medium">{row.execution_plan ?? 'Week 1'}</span> •{' '}
                       <span className="uppercase">{row.quadrant ?? 'k1'}</span>
                     </td>
 
-                    <td className="px-3 py-2 align-top text-[11px] text-slate-700">
-                      {marketerName}
-                    </td>
+                    <td className="px-3 py-2 align-top text-[11px] text-slate-700">{marketerName}</td>
 
                     <td className="px-3 py-2 align-top text-[11px] text-slate-700">
                       <div className="flex flex-col">
-                        <span className="font-medium capitalize text-slate-800">
-                          {row.status ?? 'prospecting'}
-                        </span>
-                        <span className="text-slate-500 capitalize">
-                          {row.lead_source ?? '—'}
-                        </span>
+                        <span className="font-medium capitalize text-slate-800">{row.status ?? 'prospecting'}</span>
+                        <span className="text-slate-500 capitalize">{row.lead_source ?? '—'}</span>
                       </div>
                     </td>
 
@@ -522,9 +486,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                       <div className="relative inline-flex">
                         <button
                           type="button"
-                          onClick={() =>
-                            setOpenMenuId(openMenuId === row.id ? null : row.id)
-                          }
+                          onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
                           className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200/70 bg-white text-[14px] leading-none text-slate-500 shadow-sm hover:bg-slate-50"
                         >
                           ⋮
@@ -584,12 +546,9 @@ export default function PipelineTable(props: PipelineTableProps) {
         </table>
       </div>
 
-      {/* PAGINATION */}
       <div className="flex items-center justify-between pt-1 text-[11px] text-slate-600">
         <p>
-          Halaman{' '}
-          <span className="font-semibold text-slate-800">{currentPage}</span>{' '}
-          dari{' '}
+          Halaman <span className="font-semibold text-slate-800">{currentPage}</span> dari{' '}
           <span className="font-semibold text-slate-800">{totalPages}</span>
         </p>
 

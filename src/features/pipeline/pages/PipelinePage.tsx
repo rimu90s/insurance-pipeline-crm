@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 
 import {
@@ -14,7 +14,7 @@ import {
   usePipelines,
   usePipelineCreateForm,
   usePipelineEditing,
-  usePipelinesRealtimePatch
+  usePipelinesRealtimePatch,
 } from '@/features/pipeline';
 
 import { PipelineRow } from '@/types/pipeline';
@@ -32,29 +32,46 @@ function formatDateLocalYYYYMMDD(d: Date): string {
 }
 
 export default function PipelinePage() {
-  // 1. AUTH: user info & logout
+  // 1) AUTH
   const { loadingUser, userEmail, userId, logout } = useAuthUser();
 
-  // 2. DATA: Master & pipelines (via hook)
+  // 2) MASTER + PIPELINES
   const { products, loadingProducts } = useProducts();
   const { marketers, loadingMarketers } = useMarketers();
   const { pipelines, setPipelines, loadingPipelines, reloadPipelines } = usePipelines(userId);
-  usePipelinesRealtimePatch({ userId, setPipelines });
 
   const loadingData = loadingProducts || loadingMarketers || loadingPipelines;
 
-    // Toast kecil untuk notifikasi
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  // 3a. STATE: Modal create pipeline (tambah baru)
+  // 3) Modal create
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // 3b. STATE: Modal detail & edit pipeline
+  // 4) Toast
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ type, message });
+    window.setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  // 5) Highlight row realtime (id -> timestamp)
+  const [recentIds, setRecentIds] = useState<Record<string, number>>({});
+
+  const markRecent = useCallback((id: string) => {
+    setRecentIds((prev) => ({ ...prev, [id]: Date.now() }));
+
+    window.setTimeout(() => {
+      setRecentIds((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }, 1200);
+  }, []);
+
+  // 6) Realtime patch (tanpa refetch)
+  usePipelinesRealtimePatch({ userId, setPipelines, onTouchedId: markRecent });
+
+  // 7) Editing / detail modal
   const {
     selectedPipeline,
     showDetailModal,
@@ -78,7 +95,7 @@ export default function PipelinePage() {
     setPipelines,
   });
 
-  // 4. STATE: Filter list pipeline (hook)
+  // 8) Filters
   const {
     filterProductId,
     setFilterProductId,
@@ -108,7 +125,7 @@ export default function PipelinePage() {
     resetFilters,
   } = usePipelineFilters(pipelines);
 
-  // 5. STATE + LOGIC: Form create pipeline (via hook)
+  // 9) Create form hook
   const {
     productId,
     setProductId,
@@ -152,16 +169,20 @@ export default function PipelinePage() {
     handleSubmit,
   } = usePipelineCreateForm({ userId, reloadPipelines });
 
-  // Wrapper submit untuk menghubungkan logic hook dengan UI (toast + modal)
+  // submit wrapper (toast + close modal)
   const handleCreateSubmit = async (e: FormEvent<HTMLFormElement>) => {
     const ok = await handleSubmit(e);
     if (ok) {
       showToast('Pipeline baru berhasil disimpan.', 'success');
       setShowCreateModal(false);
+    } else {
+      // kalau hook set error, kita tetap biarkan UI menampilkan formError
+      // showToast optional:
+      // showToast('Gagal menyimpan pipeline.', 'error');
     }
   };
 
-  // Helper nama produk & marketer dari id (untuk export + WA)
+  // helper map
   const productMap = useMemo(() => {
     const map: Record<string, string> = {};
     products.forEach((p: { id?: string; name?: string | null }) => {
@@ -178,10 +199,10 @@ export default function PipelinePage() {
     return map;
   }, [marketers]);
 
-  const getProductName = (productId: string) => productMap[productId] ?? '-';
-  const getMarketerName = (marketerId: string | null) => (marketerId ? marketerMap[marketerId] ?? '-' : '-');
+  const getProductName = (pid: string) => productMap[pid] ?? '-';
+  const getMarketerName = (mid: string | null) => (mid ? marketerMap[mid] ?? '-' : '-');
 
-  // Export ke Excel
+  // export excel
   const exportExcel = () => {
     if (filteredPipelines.length === 0) {
       alert('Tidak ada data pipeline untuk diexport (periksa filter).');
@@ -225,7 +246,6 @@ export default function PipelinePage() {
     XLSX.writeFile(wb, filename);
   };
 
-  // Modal create
   const openCreateModal = () => {
     resetForm();
     setShowCreateModal(true);
@@ -233,7 +253,6 @@ export default function PipelinePage() {
 
   const closeCreateModal = () => setShowCreateModal(false);
 
-  // Copy WhatsApp
   const copyToWhatsApp = () => {
     if (!selectedPipeline) return;
 
@@ -248,8 +267,8 @@ export default function PipelinePage() {
   const copyShortFromTable = (row: PipelineRow) => {
     const product = getProductName(row.product_id);
     const marketer = getMarketerName(row.marketer_id);
-    const message = buildWhatsAppMessage(row, product, marketer, 'short');
 
+    const message = buildWhatsAppMessage(row, product, marketer, 'short');
     navigator.clipboard.writeText(message);
     showToast('Pesan pipeline (ringkas) sudah disalin.', 'success');
   };
@@ -338,6 +357,7 @@ export default function PipelinePage() {
               onDeleteRow={handleDeleteFromTable}
               onCopyWARow={copyShortFromTable}
               onResetFilters={resetFilters}
+              recentIds={recentIds}
             />
           </section>
         </div>
@@ -353,10 +373,7 @@ export default function PipelinePage() {
                   Lengkapi data sesuai format laporan (produk, marketer, APE, kuadran, dll).
                 </p>
               </div>
-              <button
-                onClick={closeCreateModal}
-                className="text-[11px] text-slate-400 hover:text-slate-700"
-              >
+              <button onClick={closeCreateModal} className="text-[11px] text-slate-400 hover:text-slate-700">
                 Tutup
               </button>
             </div>
