@@ -14,6 +14,7 @@ import {
   usePipelines,
   usePipelineCreateForm,
   usePipelineEditing,
+  usePipelinesRealtimePatch
 } from '@/features/pipeline';
 
 import { PipelineRow } from '@/types/pipeline';
@@ -22,7 +23,6 @@ import { useAuthUser } from '@/app/dashboard/hooks/useAuthUser';
 import DateRangePicker, { DateRangeValue } from '@/features/pipeline/components/DateRangePicker';
 import Toast from '@/app/dashboard/components/Toast';
 import PipelineHeader from '@/app/dashboard/components/PipelineHeader';
-import { usePipelinesRealtime } from '@/features/pipeline/hooks/usePipelinesRealtime';
 
 function formatDateLocalYYYYMMDD(d: Date): string {
   const year = d.getFullYear();
@@ -39,7 +39,7 @@ export default function PipelinePage() {
   const { products, loadingProducts } = useProducts();
   const { marketers, loadingMarketers } = useMarketers();
   const { pipelines, setPipelines, loadingPipelines, reloadPipelines } = usePipelines(userId);
-  usePipelinesRealtime({ userId, onChange: reloadPipelines, debounceMs: 500 });
+  usePipelinesRealtimePatch({ userId, setPipelines });
 
   const loadingData = loadingProducts || loadingMarketers || loadingPipelines;
 
