@@ -69,7 +69,7 @@ export default function PipelinePage() {
   }, []);
 
   // 6) Realtime patch (tanpa refetch)
-  usePipelinesRealtimePatch({ userId, setPipelines, onTouchedId: markRecent });
+  const realtimeStatus = usePipelinesRealtimePatch({ userId, setPipelines, onTouchedId: markRecent });
 
   // 7) Editing / detail modal
   const {
@@ -175,10 +175,6 @@ export default function PipelinePage() {
     if (ok) {
       showToast('Pipeline baru berhasil disimpan.', 'success');
       setShowCreateModal(false);
-    } else {
-      // kalau hook set error, kita tetap biarkan UI menampilkan formError
-      // showToast optional:
-      // showToast('Gagal menyimpan pipeline.', 'error');
     }
   };
 
@@ -283,7 +279,7 @@ export default function PipelinePage() {
 
   return (
     <div className="min-h-screen">
-      <PipelineHeader userEmail={userEmail} onLogout={logout} />
+      <PipelineHeader userEmail={userEmail} onLogout={logout} realtimeStatus={realtimeStatus} />
 
       <main className="mx-auto max-w-6xl px-4 py-5">
         <div className="space-y-5">

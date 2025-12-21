@@ -2,15 +2,49 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { RealtimeStatus } from '@/features/pipeline/hooks/usePipelinesRealtimePatch';
 
 type PipelineHeaderProps = {
   userEmail: string | null;
   onLogout: () => void;
+
+  // optional badge realtime
+  realtimeStatus?: RealtimeStatus;
 };
+
+function statusLabel(s: RealtimeStatus) {
+  switch (s) {
+    case 'connected':
+      return 'Realtime: ON';
+    case 'connecting':
+      return 'Realtime: Connecting';
+    case 'error':
+      return 'Realtime: Error';
+    case 'disconnected':
+    default:
+      return 'Realtime: OFF';
+  }
+}
+
+function statusClass(s: RealtimeStatus) {
+  // jangan ribet: warna text & background beda tipis
+  switch (s) {
+    case 'connected':
+      return 'border-emerald-100 bg-emerald-50 text-emerald-700';
+    case 'connecting':
+      return 'border-amber-100 bg-amber-50 text-amber-700';
+    case 'error':
+      return 'border-rose-100 bg-rose-50 text-rose-700';
+    case 'disconnected':
+    default:
+      return 'border-slate-200 bg-slate-50 text-slate-600';
+  }
+}
 
 export default function PipelineHeader({
   userEmail,
   onLogout,
+  realtimeStatus,
 }: PipelineHeaderProps) {
   const pathname = usePathname();
 
@@ -31,10 +65,24 @@ export default function PipelineHeader({
               <h1 className="text-sm font-semibold text-slate-900">
                 Sales Pipeline CRM
               </h1>
+
               <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
                 Private beta
               </span>
+
+              {realtimeStatus && (
+                <span
+                  title={statusLabel(realtimeStatus)}
+                  className={[
+                    'rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                    statusClass(realtimeStatus),
+                  ].join(' ')}
+                >
+                  {statusLabel(realtimeStatus)}
+                </span>
+              )}
             </div>
+
             <p className="text-[11px] text-slate-500">
               Monitoring pipeline asuransi, APE, dan progres closing harian.
             </p>
@@ -93,7 +141,7 @@ export default function PipelineHeader({
         </div>
       </div>
 
-      {/* Mobile nav (opsional sederhana) */}
+      {/* Mobile nav */}
       <div className="mx-auto flex w-full max-w-6xl items-center justify-center gap-1 px-4 pb-2 pt-1 md:hidden">
         <Link
           href="/dashboard"

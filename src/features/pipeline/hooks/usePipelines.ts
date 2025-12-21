@@ -1,8 +1,9 @@
+// src/features/pipeline/hooks/usePipelines.ts
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { PipelineRow } from '@/types/pipeline';
+import type { PipelineRow } from '@/types/pipeline';
 
 export function usePipelines(userId?: string | null) {
   const [pipelines, setPipelines] = useState<PipelineRow[]>([]);
@@ -34,43 +35,17 @@ export function usePipelines(userId?: string | null) {
     setLoadingPipelines(false);
   }, [userId]);
 
-  // Auto fetch on userId change (inline, biar lolos rule react-hooks/set-state-in-effect)
+  // Auto fetch on userId change
+  // NOTE: gunakan setTimeout agar setState tidak terjadi sinkron di body effect (lolos react-hooks/set-state-in-effect)
   useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      if (!userId) {
-        if (cancelled) return;
-        setPipelines([]);
-        setLoadingPipelines(false);
-        return;
-      }
-
-      if (cancelled) return;
-      setLoadingPipelines(true);
-
-      const { data, error } = await supabase
-        .from('pipelines')
-        .select('*')
-        .eq('owner_id', userId)
-        .order('pipeline_date', { ascending: false });
-
-      if (cancelled) return;
-
-      if (error) {
-        setPipelines([]);
-        setLoadingPipelines(false);
-        return;
-      }
-
-      setPipelines((data ?? []) as PipelineRow[]);
-      setLoadingPipelines(false);
-    })();
+    const t = window.setTimeout(() => {
+      void reloadPipelines();
+    }, 0);
 
     return () => {
-      cancelled = true;
+      window.clearTimeout(t);
     };
-  }, [userId]);
+  }, [reloadPipelines]);
 
   return {
     pipelines,

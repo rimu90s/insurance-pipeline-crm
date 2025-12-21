@@ -1,7 +1,8 @@
+// src/features/pipeline/hooks/usePipelineFilters.ts
 'use client';
 
 import { useState, useMemo } from 'react';
-import { PipelineRow } from '@/types/pipeline';
+import type { PipelineRow } from '@/types/pipeline';
 import type { DateRangePreset } from '../components/DateRangePicker';
 
 // Preset tanggal yang dipakai di seluruh sistem
@@ -31,40 +32,39 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
   const filteredPipelines = useMemo(() => {
     let result: PipelineRow[] = [...pipelines];
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = toLocalYYYYMMDD(today);
+
     // Helper: filter tanggal per-row
     const applyDateFilter = (row: PipelineRow): boolean => {
       const dateStr = row.pipeline_date; // YYYY-MM-DD atau null
 
-      // Jika tidak ada tanggal, exclude
-      if (!dateStr) return false;
-
-      // "hari ini" versi lokal (timezone-safe, tanpa UTC shift)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = toLocalYYYYMMDD(today);
-
-      // ── Custom range: pakai string compare (paling stabil untuk YYYY-MM-DD)
+      // ── Custom range
       if (datePreset === 'custom') {
-        // custom tanpa input apa pun → semua tanggal lolos
+        // custom tanpa input apa pun → semua tanggal lolos (termasuk yang null)
         if (!customStartDate && !customEndDate) return true;
 
+        // kalau user set range tapi row tidak punya tanggal → exclude
+        if (!dateStr) return false;
+
+        // string compare aman untuk YYYY-MM-DD
         if (customStartDate && dateStr < customStartDate) return false;
         if (customEndDate && dateStr > customEndDate) return false;
         return true;
       }
 
-      // ── Preset "today" (string compare, aman)
-      if (datePreset === 'today') {
-        return dateStr === todayStr;
-      }
+      // preset selain custom: butuh tanggal valid
+      if (!dateStr) return false;
 
-      // Untuk rolling window, kita pakai Date lokal tapi "todayStr" sudah aman.
+      // ── Preset "today"
+      if (datePreset === 'today') return dateStr === todayStr;
+
+      // Rolling window
       const d = new Date(dateStr + 'T00:00:00');
       d.setHours(0, 0, 0, 0);
 
-      const diffDays = Math.floor(
-        (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const diffDays = Math.floor((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
 
       switch (datePreset) {
         case 'yesterday':
@@ -78,47 +78,31 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
         case '90d':
           return diffDays >= 0 && diffDays <= 89;
         default:
-          // fallback kalau ada preset baru
           return true;
       }
     };
 
     // ── filter by product
-    if (filterProductId) {
-      result = result.filter((row) => row.product_id === filterProductId);
-    }
+    if (filterProductId) result = result.filter((row) => row.product_id === filterProductId);
 
     // ── filter by plan
-    if (filterPlan) {
-      result = result.filter((row) => row.execution_plan === filterPlan);
-    }
+    if (filterPlan) result = result.filter((row) => row.execution_plan === filterPlan);
 
     // ── filter by quadrant
-    if (filterQuadrant) {
-      result = result.filter((row) => row.quadrant === filterQuadrant);
-    }
+    if (filterQuadrant) result = result.filter((row) => row.quadrant === filterQuadrant);
 
     // ── filter by marketer
-    if (filterMarketerId) {
-      result = result.filter((row) => row.marketer_id === filterMarketerId);
-    }
+    if (filterMarketerId) result = result.filter((row) => row.marketer_id === filterMarketerId);
 
     // ── filter by priority
-    if (filterPriority === 'priority') {
-      result = result.filter((row) => !!row.priority_flag);
-    } else if (filterPriority === 'normal') {
-      result = result.filter((row) => !row.priority_flag);
-    }
+    if (filterPriority === 'priority') result = result.filter((row) => !!row.priority_flag);
+    else if (filterPriority === 'normal') result = result.filter((row) => !row.priority_flag);
 
     // ── filter by status
-    if (filterStatus) {
-      result = result.filter((row) => row.status === filterStatus);
-    }
+    if (filterStatus) result = result.filter((row) => row.status === filterStatus);
 
     // ── filter by lead source
-    if (filterLeadSource) {
-      result = result.filter((row) => row.lead_source === filterLeadSource);
-    }
+    if (filterLeadSource) result = result.filter((row) => row.lead_source === filterLeadSource);
 
     // ── filter tanggal (preset/custom)
     result = result.filter((row) => applyDateFilter(row));
@@ -138,13 +122,15 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
     customEndDate,
   ]);
 
-  const totalApeIdr = useMemo(() => {
-    return filteredPipelines.reduce((sum, row) => sum + (row.ape_idr ?? 0), 0);
-  }, [filteredPipelines]);
+  const totalApeIdr = useMemo(
+    () => filteredPipelines.reduce((sum, row) => sum + (row.ape_idr ?? 0), 0),
+    [filteredPipelines]
+  );
 
-  const totalApeUsd = useMemo(() => {
-    return filteredPipelines.reduce((sum, row) => sum + (row.ape_usd ?? 0), 0);
-  }, [filteredPipelines]);
+  const totalApeUsd = useMemo(
+    () => filteredPipelines.reduce((sum, row) => sum + (row.ape_usd ?? 0), 0),
+    [filteredPipelines]
+  );
 
   const resetFilters = () => {
     setFilterProductId('');
@@ -161,7 +147,6 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
   };
 
   return {
-    // state filter umum
     filterProductId,
     setFilterProductId,
     filterPlan,
@@ -177,7 +162,6 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
     filterLeadSource,
     setFilterLeadSource,
 
-    // date filter
     datePreset,
     setDatePreset,
     customStartDate,
@@ -185,7 +169,6 @@ export function usePipelineFilters(pipelines: PipelineRow[]) {
     customEndDate,
     setCustomEndDate,
 
-    // hasil
     filteredPipelines,
     totalApeIdr,
     totalApeUsd,

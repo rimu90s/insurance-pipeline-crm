@@ -15,5 +15,6 @@ export { useMarketers } from './hooks/useMarketers';
 export { usePipelines } from './hooks/usePipelines';
 export { usePipelineCreateForm } from './hooks/usePipelineCreateForm';
 export { usePipelineEditing } from './hooks/usePipelineEditing';
-export { useDailyReport } from './hooks/useDailyReport'
+export { useDailyReport } from './hooks/useDailyReport';
 export { usePipelinesRealtimePatch } from './hooks/usePipelinesRealtimePatch';
+export type { RealtimeStatus } from './hooks/usePipelinesRealtimePatch';
