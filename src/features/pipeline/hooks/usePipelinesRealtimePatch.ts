@@ -23,12 +23,10 @@ function hasId(value: unknown): value is { id: string } {
 function isPipelineRow(value: unknown): value is PipelineRow {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-
   return (
     typeof v.id === 'string' &&
     typeof v.product_id === 'string' &&
-    typeof v.customer_name === 'string' &&
-    'owner_id' in v
+    typeof v.customer_name === 'string'
   );
 }
 
@@ -49,21 +47,12 @@ export function usePipelinesRealtimePatch({
 }: Args) {
   const [status, setStatus] = useState<RealtimeStatus>('disconnected');
 
-  // Kalau userId hilang (logout / belum login), pastikan status ikut turun
-  useEffect(() => {
-    if (!userId && status !== 'disconnected') {
-      setStatus('disconnected');
-      onStatusChange?.('disconnected');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-
   useEffect(() => {
     if (!userId) return;
 
     let alive = true;
 
-    // jangan setState sync di body effect → pakai microtask
+    // Hindari setState sync di body effect (supaya tidak kena rule react-hooks/set-state-in-effect)
     queueMicrotask(() => {
       if (!alive) return;
       setStatus('connecting');
@@ -74,7 +63,14 @@ export function usePipelinesRealtimePatch({
       .channel(`pipelines-patch-${userId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'pipelines' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pipelines',
+          // ✅ kunci utama: filter level channel
+          // jadi event yang masuk sudah pasti milik userId
+          filter: `owner_id=eq.${userId}`,
+        },
         (payload: RealtimePostgresChangesPayload<PipelineRow>) => {
           if (!alive) return;
 
@@ -83,49 +79,36 @@ export function usePipelinesRealtimePatch({
           const oldRaw = payload.old;
 
           const newRow = isPipelineRow(newRaw) ? newRaw : null;
-          const oldRow = isPipelineRow(oldRaw) ? oldRaw : null;
 
-          const newOwner = newRow
-            ? (((newRow as unknown as { owner_id?: string | null }).owner_id) ?? null)
-            : null;
-
-          const oldOwner = oldRow
-            ? (((oldRow as unknown as { owner_id?: string | null }).owner_id) ?? null)
-            : null;
-
-          if (newOwner !== userId && oldOwner !== userId) return;
-
+          // touchedId wajib ada untuk DELETE yang payload.old sering minim
           const touchedId =
             event === 'DELETE'
-              ? oldRow?.id ?? (hasId(oldRaw) ? oldRaw.id : null)
-              : newRow?.id ?? (hasId(newRaw) ? newRaw.id : null);
+              ? (hasId(oldRaw) ? oldRaw.id : null)
+              : (newRow?.id ?? (hasId(newRaw) ? newRaw.id : null));
 
           if (!touchedId) return;
 
           onTouchedId?.(touchedId);
 
           setPipelines((prev) => {
-            // DELETE
+            // ✅ DELETE: cukup remove by id. Karena prev hanya berisi data user ini.
             if (event === 'DELETE') {
               return prev.filter((p) => p.id !== touchedId);
             }
 
-            // INSERT / UPDATE
+            // INSERT / UPDATE butuh newRow yang valid
             if (!newRow) return prev;
-
-            // kalau row pindah owner dan sekarang bukan punya user → remove
-            if (newOwner !== userId) {
-              return prev.filter((p) => p.id !== newRow.id);
-            }
 
             const idx = prev.findIndex((p) => p.id === newRow.id);
 
+            // upsert
             if (idx === -1) {
               const next = [newRow, ...prev];
               next.sort(sortByPipelineDateDesc);
               return next;
             }
 
+            // replace
             const next = [...prev];
             next[idx] = newRow;
             next.sort(sortByPipelineDateDesc);

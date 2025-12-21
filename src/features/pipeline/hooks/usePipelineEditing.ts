@@ -22,29 +22,18 @@ function parseMoneyInput(input: string): number | null {
   if (hasDot && hasComma) {
     const lastDot = cleaned.lastIndexOf('.');
     const lastComma = cleaned.lastIndexOf(',');
-    if (lastDot > lastComma) {
-      normalized = cleaned.replace(/,/g, '');
-    } else {
-      normalized = cleaned.replace(/\./g, '').replace(/,/g, '.');
-    }
+    if (lastDot > lastComma) normalized = cleaned.replace(/,/g, '');
+    else normalized = cleaned.replace(/\./g, '').replace(/,/g, '.');
   } else if (hasComma && !hasDot) {
     const parts = cleaned.split(',');
-    if (parts.length > 2) {
-      normalized = cleaned.replace(/,/g, '');
-    } else if (parts.length === 2 && parts[1].length === 3) {
-      normalized = cleaned.replace(/,/g, '');
-    } else {
-      normalized = cleaned.replace(/,/g, '.');
-    }
+    if (parts.length > 2) normalized = cleaned.replace(/,/g, '');
+    else if (parts.length === 2 && parts[1].length === 3) normalized = cleaned.replace(/,/g, '');
+    else normalized = cleaned.replace(/,/g, '.');
   } else if (hasDot && !hasComma) {
     const parts = cleaned.split('.');
-    if (parts.length > 2) {
-      normalized = cleaned.replace(/\./g, '');
-    } else if (parts.length === 2 && parts[1].length === 3) {
-      normalized = cleaned.replace(/\./g, '');
-    } else {
-      normalized = cleaned;
-    }
+    if (parts.length > 2) normalized = cleaned.replace(/\./g, '');
+    else if (parts.length === 2 && parts[1].length === 3) normalized = cleaned.replace(/\./g, '');
+    else normalized = cleaned;
   }
 
   const num = Number(normalized);
@@ -52,11 +41,7 @@ function parseMoneyInput(input: string): number | null {
   return num;
 }
 
-export function usePipelineEditing({
-  userId,
-  reloadPipelines,
-  setPipelines,
-}: UsePipelineEditingArgs) {
+export function usePipelineEditing({ userId, reloadPipelines, setPipelines }: UsePipelineEditingArgs) {
   const [selectedPipeline, setSelectedPipeline] = useState<PipelineRow | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -163,19 +148,24 @@ export function usePipelineEditing({
   };
 
   const deletePipeline = async (row: PipelineRow) => {
-    const { error } = await supabase.from('pipelines').delete().eq('id', row.id);
+    if (!userId) throw new Error('User belum login.');
+
+    const { error } = await supabase
+      .from('pipelines')
+      .delete()
+      .eq('id', row.id)
+      .eq('owner_id', userId); // ✅ penting
 
     if (error) throw new Error(error.message);
 
+    // optimistic remove (realtime juga akan remove di tab lain)
     setPipelines((prev) => prev.filter((p) => p.id !== row.id));
   };
 
   const handleDelete = async () => {
     if (!selectedPipeline) return;
 
-    const ok = window.confirm(
-      `Yakin ingin menghapus pipeline untuk nasabah "${selectedPipeline.customer_name}"?`
-    );
+    const ok = window.confirm(`Yakin ingin menghapus pipeline untuk nasabah "${selectedPipeline.customer_name}"?`);
     if (!ok) return;
 
     setDeleting(true);
