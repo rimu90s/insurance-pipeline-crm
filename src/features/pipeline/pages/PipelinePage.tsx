@@ -31,6 +31,19 @@ function formatDateLocalYYYYMMDD(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function getRealtimeBadge(status: string) {
+  if (status === 'connected') {
+    return { label: 'Realtime: ON', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+  }
+  if (status === 'connecting') {
+    return { label: 'Realtime: Connecting', className: 'border-amber-200 bg-amber-50 text-amber-700' };
+  }
+  if (status === 'error') {
+    return { label: 'Realtime: Error', className: 'border-rose-200 bg-rose-50 text-rose-700' };
+  }
+  return { label: 'Realtime: OFF', className: 'border-slate-200 bg-slate-50 text-slate-600' };
+}
+
 export default function PipelinePage() {
   // 1) AUTH
   const { loadingUser, userEmail, userId, logout } = useAuthUser();
@@ -68,8 +81,9 @@ export default function PipelinePage() {
     }, 1200);
   }, []);
 
-  // 6) Realtime patch (tanpa refetch)
+  // 6) Realtime patch (tanpa refetch) -> sekarang DIPAKAI (tidak unused lagi)
   const realtimeStatus = usePipelinesRealtimePatch({ userId, setPipelines, onTouchedId: markRecent });
+  const realtimeBadge = getRealtimeBadge(realtimeStatus);
 
   // 7) Editing / detail modal
   const {
@@ -279,7 +293,7 @@ export default function PipelinePage() {
 
   return (
     <div className="min-h-screen">
-      <PipelineHeader userEmail={userEmail} onLogout={logout} realtimeStatus={realtimeStatus} />
+      <PipelineHeader userEmail={userEmail} onLogout={logout} />
 
       <main className="mx-auto max-w-6xl px-4 py-5">
         <div className="space-y-5">
@@ -295,7 +309,19 @@ export default function PipelinePage() {
           <section className="space-y-3 rounded-2xl border border-white/60 bg-white/90 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur">
             <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-2.5 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">Data pipeline</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-slate-900">Data pipeline</h2>
+                  <span
+                    className={[
+                      'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                      realtimeBadge.className,
+                    ].join(' ')}
+                    title={`Status realtime: ${realtimeStatus}`}
+                  >
+                    {realtimeBadge.label}
+                  </span>
+                </div>
+
                 <p className="text-[11px] text-slate-500">
                   Kelola pipeline harian, filter, dan export laporan untuk atasan.
                 </p>
