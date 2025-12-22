@@ -1,3 +1,4 @@
+// src/features/pipeline/components/pipelineTable/usePipelineTableController.ts
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -103,7 +104,10 @@ export function usePipelineTableController(args: Args) {
 
   const getProductName = useCallback((id: string) => productMap[id] ?? '-', [productMap]);
 
-  const getMarketerName = useCallback((id: string | null) => (id ? marketerMap[id] ?? '-' : '-'), [marketerMap]);
+  const getMarketerName = useCallback(
+    (id: string | null) => (id ? marketerMap[id] ?? '-' : '-'),
+    [marketerMap]
+  );
 
   const setSort = (key: SortKey) => {
     setPage(1);
@@ -205,7 +209,7 @@ export function usePipelineTableController(args: Args) {
     return filteredPipelines.filter((row) => {
       const productName = getProductName(row.product_id).toLowerCase();
       const marketerName = getMarketerName(row.marketer_id).toLowerCase();
-      const customer = row.customer_name.toLowerCase();
+      const customer = (row.customer_name ?? '').toLowerCase();
       const branch = (row.branch ?? '').toLowerCase();
 
       return productName.includes(q) || marketerName.includes(q) || customer.includes(q) || branch.includes(q);
@@ -256,19 +260,22 @@ export function usePipelineTableController(args: Args) {
     setOpenMenuId(null);
   };
 
+  /**
+   * IMPORTANT:
+   * Sumber reset filter utama ada di parent (usePipelineFilters).
+   * Di controller, kita hanya "meminta" reset itu via onResetFilters(),
+   * lalu apply preset/extra-filter yang relevan.
+   */
   const applyPreset = (preset: PresetId) => {
+    // reset UI local
     setSearch('');
     setPage(1);
     setOpenMenuId(null);
 
-    setFilterProductId('');
-    setFilterMarketerId('');
-    setFilterPlan('');
-    setFilterQuadrant('');
-    setFilterStatus('');
-    setFilterLeadSource('');
-    setFilterPriority('');
+    // reset filter parent (ini yang paling aman, biar tidak miss)
+    onResetFilters();
 
+    // apply preset
     if (preset === 'today_all') {
       setDatePreset('today');
       return;
@@ -291,20 +298,32 @@ export function usePipelineTableController(args: Args) {
       return;
     }
 
+    // default fallback: 7d_won
     setDatePreset('7d');
     setFilterStatus('won');
   };
 
   const activePreset: PresetId | null = useMemo(() => {
+    // Agar preset terbaca benar, "noOtherFilters" harus include status+priority juga
     const noOtherFilters =
+      !filterProductId &&
+      !filterMarketerId &&
+      !filterPlan &&
+      !filterQuadrant &&
+      !filterLeadSource &&
+      !filterStatus &&
+      !filterPriority;
+
+    if (datePreset === 'today' && noOtherFilters) return 'today_all';
+    if (datePreset === '7d' && noOtherFilters) return '7d_all';
+
+    // varian preset yang boleh punya status/priority tertentu
+    const baseFiltersOnly =
       !filterProductId && !filterMarketerId && !filterPlan && !filterQuadrant && !filterLeadSource;
 
-    if (datePreset === 'today' && noOtherFilters && !filterStatus && !filterPriority) return 'today_all';
-    if (datePreset === '7d' && noOtherFilters && !filterStatus && !filterPriority) return '7d_all';
-
-    if (datePreset === 'today' && noOtherFilters && !filterStatus && filterPriority === 'priority') return 'today_priority';
-    if (datePreset === '7d' && noOtherFilters && filterStatus === 'closing' && !filterPriority) return '7d_closing';
-    if (datePreset === '7d' && noOtherFilters && filterStatus === 'won' && !filterPriority) return '7d_won';
+    if (datePreset === 'today' && baseFiltersOnly && !filterStatus && filterPriority === 'priority') return 'today_priority';
+    if (datePreset === '7d' && baseFiltersOnly && filterStatus === 'closing' && !filterPriority) return '7d_closing';
+    if (datePreset === '7d' && baseFiltersOnly && filterStatus === 'won' && !filterPriority) return '7d_won';
 
     return null;
   }, [
@@ -456,6 +475,8 @@ export function usePipelineTableController(args: Args) {
   const resetAll = () => {
     onResetFilters();
     setSearch('');
+    setSortKey('customer');
+    setSortDir('asc');
     setPage(1);
     setOpenMenuId(null);
   };
