@@ -1,0 +1,244 @@
+'use client';
+
+import { useState } from 'react';
+import { useAuthUser } from '../hooks/useAuthUser';
+import {
+  usePipelines, ReportDatePreset
+} from '@/features/pipeline';
+import PipelineHeader from '../components/PipelineHeader';
+import { useDailyReport, WeeklyRow } from '@/features/pipeline/hooks/useDailyReport';
+
+function formatCurrencyIdr(value: number) {
+  return `Rp ${value.toLocaleString('id-ID')}`;
+}
+
+function formatCurrencyUsd(value: number) {
+  return `$ ${value.toLocaleString('en-US')}`;
+}
+
+export default function DailyReportPage() {
+  const { loadingUser, userEmail, userId, logout } = useAuthUser();
+  const [preset, setPreset] = useState<"today" | "yesterday" | "7d" | "30d">("today");
+
+  const {
+    pipelines,
+    loadingPipelines,
+  } = usePipelines(userId);
+
+  const loading = loadingUser || loadingPipelines;
+
+  const report = useDailyReport(pipelines, preset);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen">
+        <PipelineHeader userEmail={userEmail} onLogout={logout} />
+        <main className="mx-auto max-w-6xl px-4 py-6">
+          <p className="text-sm text-slate-600">
+            Memuat laporan harian…
+          </p>
+        </main>
+      </div>
+    );
+  }
+
+  const { today, weekly } = report;
+
+  // ─────────────────────────────────────────────
+  //  Simple insight dari data today + weekly
+  // ─────────────────────────────────────────────
+
+  let totalRangePipeline = 0;
+  let totalRangeWon = 0;
+  let totalRangeLost = 0;
+
+  for (const row of weekly) {
+    totalRangePipeline += row.totalPipeline;
+    totalRangeWon += row.won;
+    totalRangeLost += row.lost;
+  }
+
+  const days = weekly.length || 1;
+  const avgPipelinePerDay = totalRangePipeline / days;
+
+  const anchorRow = weekly.length > 0 ? weekly[weekly.length - 1] : null;
+
+  let headline = 'Belum ada data pada periode ini.';
+  let subline = 'Tambahkan pipeline baru untuk mulai melihat tren harian.';
+
+  if (anchorRow && totalRangePipeline > 0) {
+    const ratio =
+      avgPipelinePerDay > 0
+        ? anchorRow.totalPipeline / avgPipelinePerDay
+        : 1;
+
+    if (ratio >= 1.25) {
+      headline = 'Aktivitas pipeline hari ini di atas rata-rata periode.';
+    } else if (ratio <= 0.75) {
+      headline = 'Aktivitas pipeline hari ini di bawah rata-rata periode.';
+    } else {
+      headline = 'Aktivitas pipeline hari ini mendekati rata-rata periode.';
+    }
+
+    subline = [
+      `Periode ini: ${totalRangePipeline} pipeline (rata-rata ${avgPipelinePerDay.toFixed(1)} per hari).`,
+      `Won: ${totalRangeWon}, Lost: ${totalRangeLost}.`,
+    ].join(' ');
+  }
+
+  return (
+    <div className="min-h-screen">
+      <PipelineHeader userEmail={userEmail} onLogout={logout} />
+
+      <main className="mx-auto max-w-6xl px-4 py-5 space-y-5">
+        {/* Title */}
+        <section className="space-y-1">
+          <h1 className="text-base font-semibold text-slate-900">
+            Daily pipeline report
+          </h1>
+          <p className="text-[11px] text-slate-500">
+            Ringkasan performa pipeline hari ini dan tren 7 hari terakhir.
+          </p>
+        </section>
+        {/* Date preset bar */}
+        <ReportDatePreset preset={preset} setPreset={setPreset} />
+        {/* Insight singkat */}
+        <section className="rounded-2xl border border-white/60 bg-slate-900 text-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.10)]">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+            Insight singkat
+          </p>
+          <h2 className="mt-1 text-sm font-semibold">
+            {headline}
+          </h2>
+          <p className="mt-1 text-[11px] text-slate-200">
+            {subline}
+          </p>
+        </section>
+        {/* TODAY SUMMARY */}
+        <section className="grid gap-4 md:grid-cols-4">
+        {[
+          {
+            title: "Pipeline hari ini",
+            value: today.totalPipeline,
+            desc: "Jumlah pipeline bertanggal hari ini",
+          },
+          {
+            title: "APE IDR hari ini",
+            value: formatCurrencyIdr(today.apeIdr),
+            desc: "Total APE IDR pipeline hari ini",
+          },
+          {
+            title: "APE USD hari ini",
+            value: formatCurrencyUsd(today.apeUsd),
+            desc: "Total APE USD pipeline hari ini",
+          },
+          {
+            title: "Aktivitas hari ini",
+            value: "",
+            custom: (
+              <div className="text-[11px] text-slate-700 space-y-0.5 mt-1">
+                <p><span className="font-semibold">{today.newPipelines}</span> pipeline baru</p>
+                <p><span className="font-semibold">{today.followUps}</span> follow up</p>
+                <p>
+                  <span className="font-semibold">{today.won}</span> won •{" "}
+                  <span className="font-semibold">{today.lost}</span> lost
+                </p>
+              </div>
+            ),
+          },
+        ].map((card, idx) => (
+          <div
+            key={idx}
+            className="flex flex-col gap-1 rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-[0_12px_32px_rgba(15,23,42,0.06)] backdrop-blur"
+          >
+            <p className="text-[11px] font-medium text-slate-500">{card.title}</p>
+
+            {card.custom ? (
+              card.custom
+            ) : (
+              <h2 className="text-2xl font-semibold text-slate-900 leading-tight">
+                {card.value}
+              </h2>
+            )}
+
+            <p className="text-[11px] text-slate-500">{card.desc}</p>
+          </div>
+        ))}
+      </section>
+
+
+        {/* WEEKLY TABLE */}
+        <section className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-[0_12px_32px_rgba(15,23,42,0.06)] backdrop-blur space-y-3">
+          <div className="mb-2 flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                Tren 7 hari terakhir
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Rekap jumlah pipeline, APE, dan status won/lost berdasarkan tanggal pipeline.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-separate border-spacing-0 text-xs">
+              <thead>
+                <tr>
+                  <th className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                    Tanggal
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                    Pipeline
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                    APE IDR
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                    APE USD
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                    Won
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                    Lost
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {weekly.map((row: WeeklyRow) => (
+                  <tr key={row.date} className="border-b border-slate-100">
+                    <td className="px-3 py-2 text-[11px] text-slate-700">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-slate-900">
+                          {row.label}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {row.date}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-right text-[11px] text-slate-700">
+                      {row.totalPipeline}
+                    </td>
+                    <td className="px-3 py-2 text-right text-[11px] text-slate-700">
+                      {formatCurrencyIdr(row.apeIdr)}
+                    </td>
+                    <td className="px-3 py-2 text-right text-[11px] text-slate-700">
+                      {formatCurrencyUsd(row.apeUsd)}
+                    </td>
+                    <td className="px-3 py-2 text-right text-[11px] text-emerald-700">
+                      {row.won}
+                    </td>
+                    <td className="px-3 py-2 text-right text-[11px] text-rose-700">
+                      {row.lost}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}

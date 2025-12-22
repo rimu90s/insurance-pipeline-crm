@@ -1,0 +1,671 @@
+'use client';
+
+import { Dispatch, SetStateAction } from 'react';
+import { PipelineRow, PipelineEditForm } from '@/types/pipeline';
+
+type Product = {
+  id: string;
+  name: string;
+};
+
+type Marketer = {
+  id: string;
+  name: string;
+  branch?: string | null;
+};
+
+interface PipelineDetailModalProps {
+  open: boolean;
+  pipeline: PipelineRow | null;
+  products: Product[];
+  marketers: Marketer[];
+  editMode: boolean;
+  editForm: PipelineEditForm | null;
+  editError: string | null;
+  savingEdit: boolean;
+  deleting: boolean;
+  onClose: () => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  setEditForm: Dispatch<SetStateAction<PipelineEditForm | null>>;
+  onSaveEdit: () => void;
+  onDelete: () => void;
+  onCopyWA: () => void;
+}
+
+const PLAN_OPTIONS = [
+  { value: 'week 1', label: 'Week 1' },
+  { value: 'week 2', label: 'Week 2' },
+  { value: 'week 3', label: 'Week 3' },
+  { value: 'week 4', label: 'Week 4' },
+];
+
+const QUADRANT_OPTIONS = [
+  { value: 'k1', label: 'K1' },
+  { value: 'k2', label: 'K2' },
+  { value: 'k3', label: 'K3' },
+  { value: 'k4', label: 'K4' },
+];
+
+function getProductName(products: Product[], id: string) {
+  const p = products.find((item) => item.id === id);
+  return p ? p.name : '-';
+}
+
+function getMarketerName(marketers: Marketer[], id: string | null) {
+  if (!id) return '-';
+  const m = marketers.find((item) => item.id === id);
+  return m ? m.name : '-';
+}
+
+export default function PipelineDetailModal({
+  open,
+  pipeline,
+  products,
+  marketers,
+  editMode,
+  editForm,
+  editError,
+  savingEdit,
+  deleting,
+  onClose,
+  onStartEdit,
+  onCancelEdit,
+  setEditForm,
+  onSaveEdit,
+  onDelete,
+  onCopyWA,
+}: PipelineDetailModalProps) {
+  if (!open || !pipeline) return null;
+
+  const productName = getProductName(products, pipeline.product_id);
+  const marketerName = getMarketerName(marketers, pipeline.marketer_id ?? null);
+
+  const handleChange = <K extends keyof PipelineEditForm>(
+    field: K,
+    value: PipelineEditForm[K]
+  ) => {
+    setEditForm((prev) => {
+      if (!prev) return prev;
+      return { ...prev, [field]: value };
+    });
+  };
+
+  const formatMoneyForEdit = (value?: number | null, maxLength = 15) => {
+  if (value === null || value === undefined) return '';
+  const raw = String(value);
+  const digitsOnly = raw.replace(/\D/g, '');
+  const clipped = digitsOnly.slice(0, maxLength);
+  if (!clipped) return '';
+  return clipped.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
+
+  
+const handleMoneyInput = (field: 'ape_idr' | 'ape_usd', rawValue: string) => {
+  const digitsOnly = rawValue.replace(/\D/g, '');
+  const limited = digitsOnly.slice(0, 15);
+
+  if (!limited) {
+    setEditForm((prev) => (prev ? { ...prev, [field]: '' } : prev));
+    return;
+  }
+
+  const asNumber = Number(limited);
+
+  const formatted =
+    field === 'ape_idr'
+      ? asNumber.toLocaleString('id-ID')   // 250.000.000
+      : asNumber.toLocaleString('en-US');  // 250,000,000
+
+  setEditForm((prev) => (prev ? { ...prev, [field]: formatted } : prev));
+};
+
+      const current: PipelineEditForm =
+        editMode && editForm
+        ? editForm
+        : {
+        product_id: pipeline.product_id,
+        marketer_id: pipeline.marketer_id ?? '',
+        customer_name: pipeline.customer_name,
+        branch: pipeline.branch ?? '',
+        class: pipeline.class ?? '',
+        // format awal di field
+        ape_idr: formatMoneyForEdit(pipeline.ape_idr, 15),
+        ape_usd: formatMoneyForEdit(pipeline.ape_usd, 12),
+        execution_plan: pipeline.execution_plan ?? 'week 1',
+        quadrant: pipeline.quadrant ?? 'k1',
+        remarks: pipeline.remarks ?? '',
+        priority_flag: !!pipeline.priority_flag,
+        pipeline_date: pipeline.pipeline_date ?? '',
+        status: pipeline.status ?? 'prospecting',
+        lead_source: pipeline.lead_source ?? 'referral',
+        expected_closing_date: pipeline.expected_closing_date ?? '',
+        last_contact_date: pipeline.last_contact_date ?? '',
+        next_action: pipeline.next_action ?? '',
+        risk_tag: pipeline.risk_tag ?? '',
+      };
+
+  const formatIdr = (val: number | null | undefined) => {
+    if (val === null || val === undefined) return '—';
+    return `Rp ${val.toLocaleString('id-ID')}`;
+  };
+
+  const formatUsd = (val: number | null | undefined) => {
+    if (val === null || val === undefined) return '—';
+    return `$ ${val.toLocaleString('en-US')}`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
+        {/* HEADER */}
+        <div className="flex items-start justify-between border-b border-slate-200 px-4 py-3">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">
+              {pipeline.customer_name}
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              {productName} • {marketerName !== '-' ? marketerName : 'Tanpa marketer'} •{' '}
+              {pipeline.status ?? 'Status tidak ada'}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onCopyWA}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Copy WA
+            </button>
+
+            {!editMode ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onStartEdit}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  disabled={deleting}
+                  className="rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-[11px] font-medium text-red-600 shadow-sm hover:bg-red-100 disabled:opacity-50"
+                >
+                  {deleting ? 'Menghapus…' : 'Hapus'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onCancelEdit}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={onSaveEdit}
+                  disabled={savingEdit}
+                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {savingEdit ? 'Menyimpan…' : 'Simpan perubahan'}
+                </button>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-[11px] text-slate-400 hover:text-slate-700"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+
+        {/* BODY */}
+        <div className="space-y-4 p-4">
+          {/* SUMMARY BADGES */}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {/* APE IDR */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+            <p className="text-[11px] font-medium text-slate-500">APE (IDR)</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">
+              {formatIdr(pipeline.ape_idr)}
+            </p>
+          </div>
+
+          {/* APE USD */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+            <p className="text-[11px] font-medium text-slate-500">APE (USD)</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">
+              {formatUsd(pipeline.ape_usd)}
+            </p>
+          </div>
+
+          {/* Plan + Prioritas */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+            <p className="text-[11px] font-medium text-slate-500">Plan / Quadrant</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">
+              {(pipeline.execution_plan ?? 'Week 1')}{' '}
+              {pipeline.quadrant ? `• ${pipeline.quadrant.toUpperCase()}` : ''}
+            </p>
+            <p className="mt-2 text-[11px] text-slate-600">
+              Prioritas:{' '}
+              <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                {pipeline.priority_flag ? 'PRIORITAS' : 'Normal'}
+              </span>
+            </p>
+          </div>
+        </div>
+
+          {/* CUSTOMER INFORMATION */}
+          <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/40 p-3">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+              Customer Information
+            </h4>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {/* Nama Nasabah */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Nama Nasabah</p>
+                {!editMode ? (
+                  <p className="text-sm font-medium text-slate-900">
+                    {pipeline.customer_name}
+                  </p>
+                ) : (
+                  <input
+                    className="input"
+                    value={current.customer_name}
+                    onChange={(e) => handleChange('customer_name', e.target.value)}
+                  />
+                )}
+              </div>
+
+              {/* Kelas Nasabah */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Kelas Nasabah</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">
+                    {pipeline.class ?? '—'}
+                  </p>
+                ) : (
+                  <input
+                    className="input"
+                    value={current.class}
+                    onChange={(e) => handleChange('class', e.target.value)}
+                  />
+                )}
+              </div>
+
+              {/* Branch */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Cabang / Branch</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">
+                    {pipeline.branch ?? '—'}
+                  </p>
+                ) : (
+                  <input
+                    className="input"
+                    value={current.branch}
+                    onChange={(e) => handleChange('branch', e.target.value)}
+                  />
+                )}
+              </div>
+
+              {/* Marketer */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Marketer</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">{marketerName}</p>
+                ) : (
+                  <select
+                    className="input"
+                    value={current.marketer_id}
+                    onChange={(e) => handleChange('marketer_id', e.target.value)}
+                  >
+                    <option value="">-</option>
+                    {marketers.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Produk */}
+              <div className="space-y-1 md:col-span-2">
+                <p className="text-[11px] text-slate-500">Produk</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">{productName}</p>
+                ) : (
+                  <select
+                    className="input"
+                    value={current.product_id}
+                    onChange={(e) => handleChange('product_id', e.target.value)}
+                  >
+                    <option value="">Pilih produk…</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* PRODUK & FINANCIALS */}
+          <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/40 p-3">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+              Produk & Financials
+            </h4>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {/* APE IDR */}
+    <div className="space-y-1">
+      <p className="text-[11px] text-slate-500">APE (IDR)</p>
+      {!editMode ? (
+        <p className="text-sm text-slate-900">
+          {formatIdr(pipeline.ape_idr)}
+        </p>
+      ) : (
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[11px] text-slate-500">
+            Rp
+          </span>
+          <input
+            className="w-full rounded-lg border border-slate-300 bg-white pl-8 pr-3 py-2 text-xs outline-none focus:border-slate-400"
+            inputMode="numeric"
+            autoComplete="off"
+            value={current.ape_idr}
+            onChange={(e) => handleMoneyInput('ape_idr', e.target.value)}
+            placeholder="0"
+          />
+        </div>
+      )}
+    </div>
+
+    {/* APE USD */}
+    <div className="space-y-1">
+      <p className="text-[11px] text-slate-500">APE (USD)</p>
+      {!editMode ? (
+        <p className="text-sm text-slate-900">
+          {formatUsd(pipeline.ape_usd)}
+        </p>
+      ) : (
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[11px] text-slate-500">
+            $
+          </span>
+          <input
+            className="w-full rounded-lg border border-slate-300 bg-white pl-7 pr-3 py-2 text-xs outline-none focus:border-slate-400"
+            inputMode="numeric"
+            autoComplete="off"
+            value={current.ape_usd}
+            onChange={(e) => handleMoneyInput('ape_usd', e.target.value)}
+            placeholder="0"
+          />
+        </div>
+      )}
+    </div>
+
+              {/* Execution Plan */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Execution Plan</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">
+                    {pipeline.execution_plan ?? 'Week 1'}
+                  </p>
+                ) : (
+                  <select
+                    className="input"
+                    value={current.execution_plan}
+                    onChange={(e) => handleChange('execution_plan', e.target.value)}
+                  >
+                    {PLAN_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Quadrant */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Quadrant</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">
+                    {pipeline.quadrant ? pipeline.quadrant.toUpperCase() : 'K1'}
+                  </p>
+                ) : (
+                  <select
+                    className="input"
+                    value={current.quadrant}
+                    onChange={(e) => handleChange('quadrant', e.target.value)}
+                  >
+                    {QUADRANT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* STATUS & TIMELINE */}
+          <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/40 p-3">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+              Status & Timeline
+            </h4>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {/* Status */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Status</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">
+                    {pipeline.status ?? '—'}
+                  </p>
+                ) : (
+                      <select
+                        className="input"
+                        value={current.status}
+                        onChange={(e) => handleChange('status', e.target.value)}
+                      >
+                        <option value="prospecting">Prospecting</option>
+                        <option value="followup">Follow up</option>
+                        <option value="won">Won / Deal</option>
+                        <option value="lost">Lost / Drop</option>
+                      </select>
+                )}
+              </div>
+
+              {/* Lead Source */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Lead Source</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">
+                    {pipeline.lead_source ?? '—'}
+                  </p>
+                ) : (
+                  <select
+                    className="input"
+                    value={current.lead_source}
+                    onChange={(e) => handleChange('lead_source', e.target.value)}
+                  >
+                    <option value="referral">Referral</option>
+                    <option value="direct">Direct</option>
+                    <option value="event">Event</option>
+                    <option value="online">Online</option>
+                    <option value="telemarketing">Telemarketing</option>
+                  </select>
+                )}
+              </div>
+
+              {/* Tanggal Pipeline */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Tanggal Pipeline</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">
+                    {pipeline.pipeline_date ?? '—'}
+                  </p>
+                ) : (
+                  <input
+                    type="date"
+                    className="input"
+                    value={current.pipeline_date}
+                    onChange={(e) =>
+                      handleChange('pipeline_date', e.target.value)
+                    }
+                  />
+                )}
+              </div>
+
+              {/* Expected Closing */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Expected Closing</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">
+                    {pipeline.expected_closing_date ?? '—'}
+                  </p>
+                ) : (
+                  <input
+                    type="date"
+                    className="input"
+                    value={current.expected_closing_date}
+                    onChange={(e) =>
+                      handleChange('expected_closing_date', e.target.value)
+                    }
+                  />
+                )}
+              </div>
+
+              {/* Last Contact */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Last Contact</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">
+                    {pipeline.last_contact_date ?? '—'}
+                  </p>
+                ) : (
+                  <input
+                    type="date"
+                    className="input"
+                    value={current.last_contact_date}
+                    onChange={(e) =>
+                      handleChange('last_contact_date', e.target.value)
+                    }
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* NEXT ACTIONS & RISK */}
+          <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/40 p-3">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+              Next Actions & Risk
+            </h4>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {/* Next Action */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Next Action</p>
+                {!editMode ? (
+                  <p className="whitespace-pre-wrap text-sm text-slate-900">
+                    {pipeline.next_action ?? '—'}
+                  </p>
+                ) : (
+                  <input
+                    className="input"
+                    value={current.next_action}
+                    onChange={(e) =>
+                      handleChange('next_action', e.target.value)
+                    }
+                  />
+                )}
+              </div>
+
+              {/* Risk Tag */}
+              <div className="space-y-1">
+                <p className="text-[11px] text-slate-500">Risk Tag</p>
+                {!editMode ? (
+                  <p className="text-sm text-slate-900">
+                    {pipeline.risk_tag ?? '—'}
+                  </p>
+                ) : (
+                  <input
+                    className="input"
+                    value={current.risk_tag}
+                    onChange={(e) => handleChange('risk_tag', e.target.value)}
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* CATATAN & PRIORITAS */}
+          <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/40 p-3">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+              Catatan Tambahan
+            </h4>
+
+            <div className="space-y-1">
+              <p className="text-[11px] text-slate-500">Remarks</p>
+              {!editMode ? (
+                <p className="whitespace-pre-wrap text-sm text-slate-900">
+                  {pipeline.remarks ?? '—'}
+                </p>
+              ) : (
+                <textarea
+                  className="input h-24"
+                  value={current.remarks}
+                  onChange={(e) => handleChange('remarks', e.target.value)}
+                />
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {editMode ? (
+                <>
+                  <input
+                    id="priorityFlag"
+                    type="checkbox"
+                    checked={current.priority_flag}
+                    onChange={(e) =>
+                      handleChange('priority_flag', e.target.checked)
+                    }
+                  />
+                  <label
+                    htmlFor="priorityFlag"
+                    className="text-[11px] text-slate-600"
+                  >
+                    Tandai sebagai prioritas
+                  </label>
+                </>
+              ) : (
+                <p className="text-[11px] text-slate-600">
+                  Prioritas:{' '}
+                  <span className="font-medium">
+                    {pipeline.priority_flag ? 'Ya (prioritas)' : 'Normal'}
+                  </span>
+                </p>
+              )}
+            </div>
+          </section>
+
+          {editError && (
+            <p className="text-[12px] text-red-600">{editError}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
