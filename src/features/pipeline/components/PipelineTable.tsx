@@ -58,6 +58,29 @@ const formatCurrencyUsd = (value: number | null) => {
   return `$ ${value.toLocaleString('en-US')}`;
 };
 
+function Chip({
+  label,
+  onClear,
+}: {
+  label: string;
+  onClear: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 shadow-sm">
+      <span className="max-w-60 truncate">{label}</span>
+      <button
+        type="button"
+        onClick={onClear}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[12px] leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+        aria-label={`Hapus filter: ${label}`}
+        title="Hapus filter"
+      >
+        ×
+      </button>
+    </span>
+  );
+}
+
 export default function PipelineTable(props: PipelineTableProps) {
   const {
     filteredPipelines,
@@ -97,15 +120,28 @@ export default function PipelineTable(props: PipelineTableProps) {
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null);
 
-  const getProductName = (id: string) => {
-    const p = products.find((item) => item.id === id);
-    return p ? p.name : '-';
-  };
+  // maps biar tidak find() terus menerus
+  const productMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    products.forEach((p) => {
+      if (p?.id) map[p.id] = p.name ?? '';
+    });
+    return map;
+  }, [products]);
+
+  const marketerMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    marketers.forEach((m) => {
+      if (m?.id) map[m.id] = m.name ?? '';
+    });
+    return map;
+  }, [marketers]);
+
+  const getProductName = (id: string) => productMap[id] ?? '-';
 
   const getMarketerName = (id: string | null) => {
     if (!id) return '-';
-    const m = marketers.find((item) => item.id === id);
-    return m ? m.name : '-';
+    return marketerMap[id] ?? '-';
   };
 
   const rowsAfterSearch = (() => {
@@ -143,6 +179,127 @@ export default function PipelineTable(props: PipelineTableProps) {
     setOpenMenuId(null);
   };
 
+  // Active filter chips (tanpa ubah logic filter)
+  const activeChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string; clear: () => void }> = [];
+
+    if (filterProductId) {
+      const name = productMap[filterProductId];
+      chips.push({
+        key: 'product',
+        label: `Produk: ${name || filterProductId}`,
+        clear: () => {
+          setFilterProductId('');
+          setPage(1);
+        },
+      });
+    }
+
+    if (filterMarketerId) {
+      const name = marketerMap[filterMarketerId];
+      chips.push({
+        key: 'marketer',
+        label: `Marketer: ${name || filterMarketerId}`,
+        clear: () => {
+          setFilterMarketerId('');
+          setPage(1);
+        },
+      });
+    }
+
+    if (filterPlan) {
+      chips.push({
+        key: 'plan',
+        label: `Plan: ${filterPlan}`,
+        clear: () => {
+          setFilterPlan('');
+          setPage(1);
+        },
+      });
+    }
+
+    if (filterQuadrant) {
+      chips.push({
+        key: 'quadrant',
+        label: `Quadrant: ${filterQuadrant.toUpperCase()}`,
+        clear: () => {
+          setFilterQuadrant('');
+          setPage(1);
+        },
+      });
+    }
+
+    if (filterPriority) {
+      const nice =
+        filterPriority === 'priority' ? 'Prioritas' :
+        filterPriority === 'normal' ? 'Normal' :
+        filterPriority;
+
+      chips.push({
+        key: 'priority',
+        label: `Prioritas: ${nice}`,
+        clear: () => {
+          setFilterPriority('');
+          setPage(1);
+        },
+      });
+    }
+
+    if (filterStatus) {
+      chips.push({
+        key: 'status',
+        label: `Status: ${filterStatus}`,
+        clear: () => {
+          setFilterStatus('');
+          setPage(1);
+        },
+      });
+    }
+
+    if (filterLeadSource) {
+      chips.push({
+        key: 'source',
+        label: `Source: ${filterLeadSource}`,
+        clear: () => {
+          setFilterLeadSource('');
+          setPage(1);
+        },
+      });
+    }
+
+    if (search.trim()) {
+      const q = search.trim();
+      chips.push({
+        key: 'search',
+        label: `Search: ${q.length > 30 ? `${q.slice(0, 30)}…` : q}`,
+        clear: () => {
+          setSearch('');
+          setPage(1);
+        },
+      });
+    }
+
+    return chips;
+  }, [
+    filterProductId,
+    filterMarketerId,
+    filterPlan,
+    filterQuadrant,
+    filterPriority,
+    filterStatus,
+    filterLeadSource,
+    search,
+    productMap,
+    marketerMap,
+    setFilterProductId,
+    setFilterMarketerId,
+    setFilterPlan,
+    setFilterQuadrant,
+    setFilterPriority,
+    setFilterStatus,
+    setFilterLeadSource,
+  ]);
+
   return (
     <div className="space-y-3">
       <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
@@ -174,6 +331,20 @@ export default function PipelineTable(props: PipelineTableProps) {
               Export Excel
             </button>
           </div>
+        </div>
+
+        {/* Active filter chips */}
+        <div className="flex flex-wrap items-center gap-2">
+          {activeChips.length === 0 ? (
+            <p className="text-[11px] text-slate-500">Tidak ada filter aktif.</p>
+          ) : (
+            <>
+              <p className="text-[11px] text-slate-500">Filter aktif:</p>
+              {activeChips.map((c) => (
+                <Chip key={c.key} label={c.label} onClear={c.clear} />
+              ))}
+            </>
+          )}
         </div>
 
         <div className="grid gap-2 md:grid-cols-4 lg:grid-cols-7">
