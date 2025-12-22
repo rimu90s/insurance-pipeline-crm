@@ -1,3 +1,4 @@
+// src/features/pipeline/pages/PipelinePage.tsx
 'use client';
 
 import { FormEvent, useMemo, useState, useCallback } from 'react';
@@ -44,21 +45,32 @@ function getRealtimeBadge(status: string) {
   return { label: 'Realtime: OFF', className: 'border-slate-200 bg-slate-50 text-slate-600' };
 }
 
-function getDatePresetLabel(
-  preset: string,
-  start?: string,
-  end?: string
-): string {
+function getDatePresetLabel(preset: string, start?: string, end?: string): string {
   const p = (preset || '').toLowerCase();
 
-  // Hindari asumsi nama preset terlalu spesifik (karena implementasi bisa beda).
-  // Kita tampilkan preset apa adanya, dan kalau custom, tampilkan tanggalnya.
   if (p.includes('custom')) {
     const range = [start || '', end || ''].filter(Boolean).join(' → ');
     return range ? `Custom (${range})` : 'Custom';
   }
 
   return preset || '-';
+}
+
+function Chip({
+  children,
+  title,
+}: {
+  children: React.ReactNode;
+  title?: string;
+}) {
+  return (
+    <span
+      title={title}
+      className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 shadow-sm"
+    >
+      {children}
+    </span>
+  );
 }
 
 export default function PipelinePage() {
@@ -236,14 +248,19 @@ export default function PipelinePage() {
   const activeProductLabel = useMemo(() => {
     if (!filterProductId) return 'Semua produk';
     const name = productMap[filterProductId];
-    return name ? name : filterProductId; // fallback ke id kalau name belum ada
+    return name ? name : `ID: ${filterProductId}`;
   }, [filterProductId, productMap]);
 
   const activeMarketerLabel = useMemo(() => {
     if (!filterMarketerId) return 'Semua marketer';
     const name = marketerMap[filterMarketerId];
-    return name ? name : filterMarketerId;
+    return name ? name : `ID: ${filterMarketerId}`;
   }, [filterMarketerId, marketerMap]);
+
+  const onResetContext = () => {
+    resetFilters();
+    showToast('Filter & periode direset.', 'success');
+  };
 
   // export excel
   const exportExcel = () => {
@@ -332,16 +349,45 @@ export default function PipelinePage() {
         <div className="space-y-5">
           <section className="rounded-2xl border border-white/60 bg-white/80 p-3 shadow-[0_20px_45px_rgba(15,23,42,0.08)] backdrop-blur">
             {/* Context bar (UX): menjelaskan scope data yang tampil */}
-            <p className="px-1 pb-2 text-[11px] text-slate-500">
-              Menampilkan data:{' '}
-              <span className="font-medium text-slate-700">{activePresetLabel}</span>
-              {' · '}
-              Produk:{' '}
-              <span className="font-medium text-slate-700">{activeProductLabel}</span>
-              {' · '}
-              Marketer:{' '}
-              <span className="font-medium text-slate-700">{activeMarketerLabel}</span>
-            </p>
+            <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Chip title="Periode aktif">Periode: <span className="ml-1 font-medium">{activePresetLabel}</span></Chip>
+                <Chip title="Filter produk">Produk: <span className="ml-1 font-medium">{activeProductLabel}</span></Chip>
+                <Chip title="Filter marketer">Marketer: <span className="ml-1 font-medium">{activeMarketerLabel}</span></Chip>
+
+                {filterStatus ? (
+                  <Chip title="Filter status">Status: <span className="ml-1 font-medium">{filterStatus}</span></Chip>
+                ) : null}
+
+                {filterPriority ? (
+                  <Chip title="Filter prioritas">Prioritas: <span className="ml-1 font-medium">{filterPriority}</span></Chip>
+                ) : null}
+
+                {filterLeadSource ? (
+                  <Chip title="Filter lead source">Source: <span className="ml-1 font-medium">{filterLeadSource}</span></Chip>
+                ) : null}
+
+                {filterPlan ? (
+                  <Chip title="Filter execution plan">Plan: <span className="ml-1 font-medium">{filterPlan}</span></Chip>
+                ) : null}
+
+                {filterQuadrant ? (
+                  <Chip title="Filter quadrant">Quadrant: <span className="ml-1 font-medium">{filterQuadrant.toUpperCase()}</span></Chip>
+                ) : null}
+              </div>
+
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
+                <span className="text-[11px] text-slate-500">Sesuai filter &amp; periode</span>
+                <button
+                  type="button"
+                  onClick={onResetContext}
+                  className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                  title="Reset semua filter & periode"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
 
             <PipelineSummary
               totalCount={filteredPipelines.length}
