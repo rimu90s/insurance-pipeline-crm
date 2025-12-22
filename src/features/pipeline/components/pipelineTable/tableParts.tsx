@@ -6,7 +6,7 @@ import type { PresetId, SortDir } from './types';
 export function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 shadow-sm">
-      <span className="max-w-[240px] truncate">{label}</span>
+      <span className="max-w-60 truncate">{label}</span>
       <button
         type="button"
         onClick={onClear}
