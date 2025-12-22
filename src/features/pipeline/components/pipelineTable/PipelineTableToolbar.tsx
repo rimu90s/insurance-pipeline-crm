@@ -1,3 +1,4 @@
+// src/features/pipeline/components/pipelineTable/PipelineTableToolbar.tsx
 'use client';
 
 import React from 'react';
@@ -83,7 +84,13 @@ export default function PipelineTableToolbar(props: Props) {
   return (
     <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] font-medium text-slate-600">Filter &amp; segmentasi pipeline</p>
+        <div className="space-y-0.5">
+          <p className="text-[11px] font-medium text-slate-600">Filter &amp; segmentasi pipeline</p>
+          <p className="text-[10px] text-slate-500">
+            <span className="font-medium text-slate-700">Export tampilan</span> mengikuti filter + search + sort.{' '}
+            <span className="font-medium text-slate-700">Export raw</span> menggunakan export legacy (dari parent).
+          </p>
+        </div>
 
         <div className="flex items-center gap-2">
           <div className="relative">
@@ -103,18 +110,18 @@ export default function PipelineTableToolbar(props: Props) {
             type="button"
             onClick={onExportView}
             className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
-            title="Export sesuai tampilan (filter + search + sort)"
+            title="Export tampilan (filter + search + sort)"
           >
-            Export Excel
+            Export tampilan
           </button>
 
           <button
             type="button"
             onClick={onExportRaw}
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-            title="Export versi lama (raw dari parent)"
+            title="Export raw (versi legacy dari parent)"
           >
-            Export (Raw)
+            Export raw
           </button>
         </div>
       </div>
@@ -123,18 +130,38 @@ export default function PipelineTableToolbar(props: Props) {
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-[11px] font-medium text-slate-600">Preset:</p>
 
-          <PresetButton label="Hari ini · Semua" active={activePreset === 'today_all'} onClick={() => onApplyPreset('today_all')} />
-          <PresetButton label="7 hari · Semua" active={activePreset === '7d_all'} onClick={() => onApplyPreset('7d_all')} />
-          <PresetButton label="Hari ini · Prioritas" active={activePreset === 'today_priority'} onClick={() => onApplyPreset('today_priority')} />
-          <PresetButton label="7 hari · Closing" active={activePreset === '7d_closing'} onClick={() => onApplyPreset('7d_closing')} />
-          <PresetButton label="7 hari · Won" active={activePreset === '7d_won'} onClick={() => onApplyPreset('7d_won')} />
+          <PresetButton
+            label="Hari ini · Semua"
+            active={activePreset === 'today_all'}
+            onClick={() => onApplyPreset('today_all')}
+          />
+          <PresetButton
+            label="7 hari · Semua"
+            active={activePreset === '7d_all'}
+            onClick={() => onApplyPreset('7d_all')}
+          />
+          <PresetButton
+            label="Hari ini · Prioritas"
+            active={activePreset === 'today_priority'}
+            onClick={() => onApplyPreset('today_priority')}
+          />
+          <PresetButton
+            label="7 hari · Closing"
+            active={activePreset === '7d_closing'}
+            onClick={() => onApplyPreset('7d_closing')}
+          />
+          <PresetButton
+            label="7 hari · Won"
+            active={activePreset === '7d_won'}
+            onClick={() => onApplyPreset('7d_won')}
+          />
         </div>
 
         <button
           type="button"
           onClick={onResetAll}
           className="text-[11px] font-medium text-slate-600 underline-offset-2 hover:text-slate-800 hover:underline"
-          title="Reset semua filter"
+          title="Reset semua filter + search + sort"
         >
           Reset semua
         </button>
