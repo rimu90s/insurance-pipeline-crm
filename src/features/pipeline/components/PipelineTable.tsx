@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as XLSX from 'xlsx';
+
 import { PipelineRow, ProductMaster, MarketerMaster } from '@/types/pipeline';
 import type { DatePreset } from '../hooks/usePipelineFilters';
 
@@ -34,7 +36,7 @@ interface PipelineTableProps {
   datePreset: DatePreset;
   setDatePreset: (v: DatePreset) => void;
 
-  exportExcel: () => void;
+  exportExcel: () => void; // legacy/raw export from parent (still supported)
   openDetailModal: (row: PipelineRow) => void;
   onEditRow: (row: PipelineRow) => void;
   onDeleteRow: (row: PipelineRow) => void;
@@ -166,6 +168,22 @@ function PresetButton({
   );
 }
 
+function formatPresetLabel(preset: DatePreset): string {
+  if (preset === 'today') return 'Hari ini';
+  if (preset === '7d') return '7 hari terakhir';
+  if (preset === '30d') return '30 hari terakhir';
+  if (preset === 'custom') return 'Custom range';
+  return String(preset);
+}
+
+function nowLocalTimestamp(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(
+    d.getMinutes()
+  )}`;
+}
+
 export default function PipelineTable(props: PipelineTableProps) {
   const {
     filteredPipelines,
@@ -191,7 +209,7 @@ export default function PipelineTable(props: PipelineTableProps) {
     datePreset,
     setDatePreset,
 
-    exportExcel,
+    exportExcel, // raw export
     openDetailModal,
     onEditRow,
     onDeleteRow,
@@ -339,12 +357,10 @@ export default function PipelineTable(props: PipelineTableProps) {
 
   // Step 9: preset helpers (1 click)
   const applyPreset = (preset: PresetId) => {
-    // always reset UX states
     setSearch('');
     setPage(1);
     setOpenMenuId(null);
 
-    // reset “non-date” filters first (safe & predictable)
     setFilterProductId('');
     setFilterMarketerId('');
     setFilterPlan('');
@@ -352,9 +368,6 @@ export default function PipelineTable(props: PipelineTableProps) {
     setFilterStatus('');
     setFilterLeadSource('');
     setFilterPriority('');
-
-    // keep sort as-is (biar user preference), tapi kalau mau dipaksa default:
-    // setSortKey('customer'); setSortDir('asc');
 
     if (preset === 'today_all') {
       setDatePreset('today');
@@ -378,12 +391,10 @@ export default function PipelineTable(props: PipelineTableProps) {
       return;
     }
 
-    // 7d_won
     setDatePreset('7d');
     setFilterStatus('won');
   };
 
-  // highlight which preset is “currently matching”
   const activePreset: PresetId | null = useMemo(() => {
     const noOtherFilters =
       !filterProductId &&
@@ -395,7 +406,8 @@ export default function PipelineTable(props: PipelineTableProps) {
     if (datePreset === 'today' && noOtherFilters && !filterStatus && !filterPriority) return 'today_all';
     if (datePreset === '7d' && noOtherFilters && !filterStatus && !filterPriority) return '7d_all';
 
-    if (datePreset === 'today' && noOtherFilters && !filterStatus && filterPriority === 'priority') return 'today_priority';
+    if (datePreset === 'today' && noOtherFilters && !filterStatus && filterPriority === 'priority')
+      return 'today_priority';
     if (datePreset === '7d' && noOtherFilters && filterStatus === 'closing' && !filterPriority) return '7d_closing';
     if (datePreset === '7d' && noOtherFilters && filterStatus === 'won' && !filterPriority) return '7d_won';
 
@@ -448,7 +460,7 @@ export default function PipelineTable(props: PipelineTableProps) {
         cmp = String(va).localeCompare(String(vb), 'id');
       }
 
-      if (cmp === 0) return a.idx - b.idx; // stable
+      if (cmp === 0) return a.idx - b.idx;
       return sortDir === 'asc' ? cmp : -cmp;
     });
 
@@ -621,6 +633,101 @@ export default function PipelineTable(props: PipelineTableProps) {
     onDeleteRow(row);
   };
 
+  // Step 10: Export “sesuai tampilan” (filter + search + sort), dengan header konteks
+  const exportExcelView = () => {
+    if (sortedRows.length === 0) {
+      alert('Tidak ada data pipeline untuk diexport (periksa filter/search).');
+      return;
+    }
+
+    const productLabel = filterProductId ? productMap[filterProductId] || filterProductId : 'Semua produk';
+    const marketerLabel = filterMarketerId ? marketerMap[filterMarketerId] || filterMarketerId : 'Semua marketer';
+
+    const contextLines: string[][] = [
+      ['LAPORAN PIPELINE (EXPORT TAMPILAN)'],
+      ['Diexport pada', nowLocalTimestamp()],
+      ['Periode', formatPresetLabel(datePreset)],
+      ['Produk', productLabel],
+      ['Marketer', marketerLabel],
+      ['Plan', filterPlan || 'Semua'],
+      ['Quadrant', filterQuadrant ? filterQuadrant.toUpperCase() : 'Semua'],
+      ['Status', filterStatus || 'Semua'],
+      ['Lead Source', filterLeadSource || 'Semua'],
+      ['Prioritas', filterPriority || 'Semua'],
+      ['Search', search.trim() || '-'],
+      ['Sort', `${sortKey.toUpperCase()} (${sortDir.toUpperCase()})`],
+      ['Total baris', String(sortedRows.length)],
+      [],
+    ];
+
+    const header = [
+      'NO',
+      'NASABAH',
+      'PRODUK',
+      'BRANCH',
+      'CLASS',
+      'MARKETER',
+      'APE_IDR',
+      'APE_USD',
+      'PLAN',
+      'QUADRANT',
+      'PIPELINE_DATE',
+      'STATUS',
+      'LEAD_SOURCE',
+      'EXPECTED_CLOSING',
+      'LAST_CONTACT',
+      'NEXT_ACTION',
+      'RISK_TAG',
+      'PRIORITAS',
+      'REMARKS',
+    ];
+
+    const body: (string | number)[][] = sortedRows.map((row, index) => {
+      const product = getProductName(row.product_id);
+      const marketer = getMarketerName(row.marketer_id);
+
+      return [
+        index + 1,
+        row.customer_name,
+        product,
+        row.branch ?? '',
+        row.class ?? '',
+        marketer,
+        row.ape_idr ?? 0,
+        row.ape_usd ?? 0,
+        row.execution_plan ?? '',
+        row.quadrant ?? '',
+        row.pipeline_date ?? '',
+        row.status ?? '',
+        row.lead_source ?? '',
+        row.expected_closing_date ?? '',
+        row.last_contact_date ?? '',
+        row.next_action ?? '',
+        row.risk_tag ?? '',
+        row.priority_flag ? 'YES' : '',
+        row.remarks ?? '',
+      ];
+    });
+
+    const aoa: (string | number)[][] = [...contextLines, header, ...body];
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // basic column widths (optional, safe)
+    const colWidths = [
+      5, 22, 20, 14, 10, 18, 12, 10, 10, 10, 14, 12, 12, 16, 14, 18, 12, 10, 24,
+    ].map((wch) => ({ wch }));
+    ws['!cols'] = colWidths;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pipeline (View)');
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `pipeline-view-${dateStr}.xlsx`;
+
+    XLSX.writeFile(wb, filename);
+  };
+
   const menuPositionClass =
     menuPlacement === 'down-right'
       ? 'right-0 top-8'
@@ -712,12 +819,23 @@ export default function PipelineTable(props: PipelineTableProps) {
               />
             </div>
 
+            {/* Step 10: Export view + keep legacy raw export */}
+            <button
+              type="button"
+              onClick={exportExcelView}
+              className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
+              title="Export sesuai tampilan (filter + search + sort)"
+            >
+              Export Excel
+            </button>
+
             <button
               type="button"
               onClick={exportExcel}
-              className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+              title="Export versi lama (raw dari parent)"
             >
-              Export Excel
+              Export (Raw)
             </button>
           </div>
         </div>
@@ -732,11 +850,7 @@ export default function PipelineTable(props: PipelineTableProps) {
               active={activePreset === 'today_all'}
               onClick={() => applyPreset('today_all')}
             />
-            <PresetButton
-              label="7 hari · Semua"
-              active={activePreset === '7d_all'}
-              onClick={() => applyPreset('7d_all')}
-            />
+            <PresetButton label="7 hari · Semua" active={activePreset === '7d_all'} onClick={() => applyPreset('7d_all')} />
             <PresetButton
               label="Hari ini · Prioritas"
               active={activePreset === 'today_priority'}
@@ -747,11 +861,7 @@ export default function PipelineTable(props: PipelineTableProps) {
               active={activePreset === '7d_closing'}
               onClick={() => applyPreset('7d_closing')}
             />
-            <PresetButton
-              label="7 hari · Won"
-              active={activePreset === '7d_won'}
-              onClick={() => applyPreset('7d_won')}
-            />
+            <PresetButton label="7 hari · Won" active={activePreset === '7d_won'} onClick={() => applyPreset('7d_won')} />
           </div>
 
           <button
@@ -932,7 +1042,6 @@ export default function PipelineTable(props: PipelineTableProps) {
                 className="sticky left-0 z-20 min-w-[230px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-600"
                 align="left"
               />
-
               <SortTh
                 label="Produk"
                 active={sortKey === 'product'}
@@ -941,14 +1050,12 @@ export default function PipelineTable(props: PipelineTableProps) {
                 className="min-w-[200px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-600"
                 align="left"
               />
-
               <th
                 scope="col"
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Branch
               </th>
-
               <SortTh
                 label="APE (IDR)"
                 active={sortKey === 'ape_idr'}
@@ -957,7 +1064,6 @@ export default function PipelineTable(props: PipelineTableProps) {
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-slate-600"
                 align="right"
               />
-
               <SortTh
                 label="APE (USD)"
                 active={sortKey === 'ape_usd'}
@@ -966,14 +1072,12 @@ export default function PipelineTable(props: PipelineTableProps) {
                 className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-slate-600"
                 align="right"
               />
-
               <th
                 scope="col"
                 className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Plan / Quadrant
               </th>
-
               <SortTh
                 label="Marketer"
                 active={sortKey === 'marketer'}
@@ -982,21 +1086,18 @@ export default function PipelineTable(props: PipelineTableProps) {
                 className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-600"
                 align="left"
               />
-
               <th
                 scope="col"
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Status / Source
               </th>
-
               <th
                 scope="col"
                 className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Prioritas
               </th>
-
               <th
                 scope="col"
                 className="sticky right-0 z-20 min-w-[70px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
