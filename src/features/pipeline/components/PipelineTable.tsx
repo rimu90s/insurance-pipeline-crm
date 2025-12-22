@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PipelineRow, ProductMaster, MarketerMaster } from '@/types/pipeline';
 import type { DatePreset } from '../hooks/usePipelineFilters';
 
@@ -61,7 +61,7 @@ const formatCurrencyUsd = (value: number | null) => {
 function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 shadow-sm">
-      <span className="max-w-60 truncate">{label}</span>
+      <span className="max-w-[240px] truncate">{label}</span>
       <button
         type="button"
         onClick={onClear}
@@ -114,7 +114,10 @@ export default function PipelineTable(props: PipelineTableProps) {
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null);
 
-  // Step 4: Close menu on outside click + Esc
+  // Step 5: close menu on scroll container
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Step 4 + Step 5: Close menu on outside click + Esc + scroll + resize
   useEffect(() => {
     if (!openMenuId) return;
 
@@ -122,7 +125,6 @@ export default function PipelineTable(props: PipelineTableProps) {
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      // Jika klik masih di area menu (button/menu), jangan tutup
       const insideMenuRoot = target.closest('[data-action-menu-root="pipeline"]');
       if (insideMenuRoot) return;
 
@@ -133,14 +135,37 @@ export default function PipelineTable(props: PipelineTableProps) {
       if (e.key === 'Escape') setOpenMenuId(null);
     };
 
+    const onScrollAny = () => {
+      setOpenMenuId(null);
+    };
+
+    const onResize = () => {
+      setOpenMenuId(null);
+    };
+
     document.addEventListener('mousedown', onPointerDown, true);
     document.addEventListener('touchstart', onPointerDown, true);
     document.addEventListener('keydown', onKeyDown, true);
+
+    // close ketika window scroll (misal user scroll page)
+    window.addEventListener('scroll', onScrollAny, true);
+
+    // close ketika resize
+    window.addEventListener('resize', onResize);
+
+    // close ketika scroll container tabel (horizontal/vertical)
+    const el = tableScrollRef.current;
+    if (el) el.addEventListener('scroll', onScrollAny, { passive: true });
 
     return () => {
       document.removeEventListener('mousedown', onPointerDown, true);
       document.removeEventListener('touchstart', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown, true);
+
+      window.removeEventListener('scroll', onScrollAny, true);
+      window.removeEventListener('resize', onResize);
+
+      if (el) el.removeEventListener('scroll', onScrollAny);
     };
   }, [openMenuId]);
 
@@ -324,6 +349,19 @@ export default function PipelineTable(props: PipelineTableProps) {
     setFilterStatus,
     setFilterLeadSource,
   ]);
+
+  const confirmDelete = (row: PipelineRow) => {
+    const marketer = getMarketerName(row.marketer_id);
+    const product = getProductName(row.product_id);
+
+    const ok = window.confirm(
+      `Hapus pipeline ini?\n\nNasabah: ${row.customer_name}\nProduk: ${product}\nMarketer: ${marketer}\n\nAksi ini tidak bisa dibatalkan.`
+    );
+
+    if (!ok) return;
+
+    onDeleteRow(row);
+  };
 
   return (
     <div className="space-y-3">
@@ -511,7 +549,7 @@ export default function PipelineTable(props: PipelineTableProps) {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" ref={tableScrollRef}>
         <table className="min-w-full border-separate border-spacing-0 text-xs">
           <thead>
             <tr>
@@ -743,7 +781,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                             <button
                               type="button"
                               onClick={() => {
-                                onDeleteRow(row);
+                                confirmDelete(row);
                                 setOpenMenuId(null);
                               }}
                               className="flex w-full items-center px-3 py-1.5 text-left text-rose-600 hover:bg-rose-50"
