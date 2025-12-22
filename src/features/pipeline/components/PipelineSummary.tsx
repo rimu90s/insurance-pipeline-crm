@@ -7,6 +7,43 @@ type PipelineSummaryProps = {
   loading: boolean;
 };
 
+function SummaryCard({
+  title,
+  value,
+  context,
+  hint,
+  alignRightOnMobile = false,
+}: {
+  title: string;
+  value: React.ReactNode;
+  context: string;
+  hint: string;
+  alignRightOnMobile?: boolean;
+}) {
+  return (
+    <div className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+      <div>
+        <p className="text-[11px] font-medium text-slate-500">{title}</p>
+
+        <div className="mt-1 mb-1">
+          <p
+            className={[
+              'text-[24px] font-semibold leading-tight text-slate-900 md:text-left',
+              alignRightOnMobile ? 'text-right' : 'text-left',
+            ].join(' ')}
+          >
+            {value}
+          </p>
+        </div>
+
+        <p className="text-[11px] text-slate-500">{context}</p>
+      </div>
+
+      <p className="mt-2 text-[11px] text-slate-500">{hint}</p>
+    </div>
+  );
+}
+
 export default function PipelineSummary({
   totalCount,
   totalApeIdr,
@@ -33,50 +70,28 @@ export default function PipelineSummary({
 
   return (
     <section className="grid gap-3 md:grid-cols-3">
-      {/* Total pipeline */}
-      <div className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-        <p className="text-[11px] font-medium text-slate-500">
-          Total pipeline (terfilter)
-        </p>
-        <div className="mt-1 mb-1">
-          <p className="text-[26px] font-semibold leading-tight text-slate-900">
-            {totalCount}
-          </p>
-        </div>
-        <p className="text-[11px] text-slate-500">
-          Jumlah nasabah dalam pipeline sesuai filter aktif.
-        </p>
-      </div>
+      <SummaryCard
+        title="Pipeline aktif"
+        value={totalCount}
+        context="Sesuai filter & periode terpilih"
+        hint="Jumlah nasabah dalam pipeline sesuai data yang sedang ditampilkan."
+      />
 
-      {/* APE IDR */}
-      <div className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-        <p className="text-[11px] font-medium text-slate-500">
-          APE IDR (sum, terfilter)
-        </p>
-        <div className="mt-1 mb-1">
-          <p className="text-[24px] font-semibold leading-tight text-slate-900 text-right md:text-left">
-            {`Rp ${totalApeIdr.toLocaleString('id-ID')}`}
-          </p>
-        </div>
-        <p className="text-[11px] text-slate-500">
-          Total APE IDR dari data yang sedang ditampilkan.
-        </p>
-      </div>
+      <SummaryCard
+        title="Total APE IDR"
+        value={`Rp ${totalApeIdr.toLocaleString('id-ID')}`}
+        context="Akumulasi pipeline aktif"
+        hint="Penjumlahan APE IDR dari pipeline yang sesuai filter."
+        alignRightOnMobile
+      />
 
-      {/* APE USD */}
-      <div className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-        <p className="text-[11px] font-medium text-slate-500">
-          APE USD (sum, terfilter)
-        </p>
-        <div className="mt-1 mb-1">
-          <p className="text-[24px] font-semibold leading-tight text-slate-900 text-right md:text-left">
-            {`$${totalApeUsd.toLocaleString('en-US')}`}
-          </p>
-        </div>
-        <p className="text-[11px] text-slate-500">
-          Total APE USD dari data yang sedang ditampilkan.
-        </p>
-      </div>
+      <SummaryCard
+        title="Total APE USD"
+        value={`$${totalApeUsd.toLocaleString('en-US')}`}
+        context="Akumulasi pipeline aktif"
+        hint="Penjumlahan APE USD dari pipeline yang sesuai filter."
+        alignRightOnMobile
+      />
     </section>
   );
 }
