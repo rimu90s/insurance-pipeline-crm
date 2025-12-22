@@ -139,6 +139,33 @@ function SortTh({
   );
 }
 
+type PresetId = 'today_all' | '7d_all' | 'today_priority' | '7d_closing' | '7d_won';
+
+function PresetButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-sm transition-colors',
+        active
+          ? 'border-slate-300 bg-white text-slate-800'
+          : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-800',
+      ].join(' ')}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function PipelineTable(props: PipelineTableProps) {
   const {
     filteredPipelines,
@@ -310,6 +337,80 @@ export default function PipelineTable(props: PipelineTableProps) {
     return marketerMap[id] ?? '-';
   };
 
+  // Step 9: preset helpers (1 click)
+  const applyPreset = (preset: PresetId) => {
+    // always reset UX states
+    setSearch('');
+    setPage(1);
+    setOpenMenuId(null);
+
+    // reset “non-date” filters first (safe & predictable)
+    setFilterProductId('');
+    setFilterMarketerId('');
+    setFilterPlan('');
+    setFilterQuadrant('');
+    setFilterStatus('');
+    setFilterLeadSource('');
+    setFilterPriority('');
+
+    // keep sort as-is (biar user preference), tapi kalau mau dipaksa default:
+    // setSortKey('customer'); setSortDir('asc');
+
+    if (preset === 'today_all') {
+      setDatePreset('today');
+      return;
+    }
+
+    if (preset === '7d_all') {
+      setDatePreset('7d');
+      return;
+    }
+
+    if (preset === 'today_priority') {
+      setDatePreset('today');
+      setFilterPriority('priority');
+      return;
+    }
+
+    if (preset === '7d_closing') {
+      setDatePreset('7d');
+      setFilterStatus('closing');
+      return;
+    }
+
+    // 7d_won
+    setDatePreset('7d');
+    setFilterStatus('won');
+  };
+
+  // highlight which preset is “currently matching”
+  const activePreset: PresetId | null = useMemo(() => {
+    const noOtherFilters =
+      !filterProductId &&
+      !filterMarketerId &&
+      !filterPlan &&
+      !filterQuadrant &&
+      !filterLeadSource;
+
+    if (datePreset === 'today' && noOtherFilters && !filterStatus && !filterPriority) return 'today_all';
+    if (datePreset === '7d' && noOtherFilters && !filterStatus && !filterPriority) return '7d_all';
+
+    if (datePreset === 'today' && noOtherFilters && !filterStatus && filterPriority === 'priority') return 'today_priority';
+    if (datePreset === '7d' && noOtherFilters && filterStatus === 'closing' && !filterPriority) return '7d_closing';
+    if (datePreset === '7d' && noOtherFilters && filterStatus === 'won' && !filterPriority) return '7d_won';
+
+    return null;
+  }, [
+    datePreset,
+    filterProductId,
+    filterMarketerId,
+    filterPlan,
+    filterQuadrant,
+    filterLeadSource,
+    filterStatus,
+    filterPriority,
+  ]);
+
   const rowsAfterSearch = useMemo(() => {
     if (!search.trim()) return filteredPipelines;
 
@@ -323,9 +424,8 @@ export default function PipelineTable(props: PipelineTableProps) {
 
       return productName.includes(q) || marketerName.includes(q) || customer.includes(q) || branch.includes(q);
     });
-  }, [filteredPipelines, search, productMap, marketerMap]); // productMap/marketerMap change -> getProductName changes
+  }, [filteredPipelines, search, productMap, marketerMap]);
 
-  // Step 8: sorting applied after search/filter
   const sortedRows = useMemo(() => {
     const withIndex = rowsAfterSearch.map((r, idx) => ({ r, idx }));
 
@@ -348,7 +448,7 @@ export default function PipelineTable(props: PipelineTableProps) {
         cmp = String(va).localeCompare(String(vb), 'id');
       }
 
-      if (cmp === 0) return a.idx - b.idx; // stable sort
+      if (cmp === 0) return a.idx - b.idx; // stable
       return sortDir === 'asc' ? cmp : -cmp;
     });
 
@@ -475,7 +575,6 @@ export default function PipelineTable(props: PipelineTableProps) {
       });
     }
 
-    // expose sorting as chip (optional UX)
     chips.push({
       key: 'sort',
       label: `Sort: ${sortKey.toUpperCase()} (${sortDir.toUpperCase()})`,
@@ -621,6 +720,53 @@ export default function PipelineTable(props: PipelineTableProps) {
               Export Excel
             </button>
           </div>
+        </div>
+
+        {/* Step 9: Preset views */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-white/70 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[11px] font-medium text-slate-600">Preset:</p>
+
+            <PresetButton
+              label="Hari ini · Semua"
+              active={activePreset === 'today_all'}
+              onClick={() => applyPreset('today_all')}
+            />
+            <PresetButton
+              label="7 hari · Semua"
+              active={activePreset === '7d_all'}
+              onClick={() => applyPreset('7d_all')}
+            />
+            <PresetButton
+              label="Hari ini · Prioritas"
+              active={activePreset === 'today_priority'}
+              onClick={() => applyPreset('today_priority')}
+            />
+            <PresetButton
+              label="7 hari · Closing"
+              active={activePreset === '7d_closing'}
+              onClick={() => applyPreset('7d_closing')}
+            />
+            <PresetButton
+              label="7 hari · Won"
+              active={activePreset === '7d_won'}
+              onClick={() => applyPreset('7d_won')}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              onResetFilters();
+              setSearch('');
+              setPage(1);
+              setOpenMenuId(null);
+            }}
+            className="text-[11px] font-medium text-slate-600 underline-offset-2 hover:text-slate-800 hover:underline"
+            title="Reset semua filter"
+          >
+            Reset semua
+          </button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
