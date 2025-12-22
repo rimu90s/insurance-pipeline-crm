@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PipelineRow, ProductMaster, MarketerMaster } from '@/types/pipeline';
 import type { DatePreset } from '../hooks/usePipelineFilters';
 
@@ -58,13 +58,7 @@ const formatCurrencyUsd = (value: number | null) => {
   return `$ ${value.toLocaleString('en-US')}`;
 };
 
-function Chip({
-  label,
-  onClear,
-}: {
-  label: string;
-  onClear: () => void;
-}) {
+function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 shadow-sm">
       <span className="max-w-60 truncate">{label}</span>
@@ -120,6 +114,36 @@ export default function PipelineTable(props: PipelineTableProps) {
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null);
 
+  // Step 4: Close menu on outside click + Esc
+  useEffect(() => {
+    if (!openMenuId) return;
+
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // Jika klik masih di area menu (button/menu), jangan tutup
+      const insideMenuRoot = target.closest('[data-action-menu-root="pipeline"]');
+      if (insideMenuRoot) return;
+
+      setOpenMenuId(null);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenMenuId(null);
+    };
+
+    document.addEventListener('mousedown', onPointerDown, true);
+    document.addEventListener('touchstart', onPointerDown, true);
+    document.addEventListener('keydown', onKeyDown, true);
+
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown, true);
+      document.removeEventListener('touchstart', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [openMenuId]);
+
   // maps biar tidak find() terus menerus
   const productMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -155,12 +179,7 @@ export default function PipelineTable(props: PipelineTableProps) {
       const customer = row.customer_name.toLowerCase();
       const branch = (row.branch ?? '').toLowerCase();
 
-      return (
-        productName.includes(q) ||
-        marketerName.includes(q) ||
-        customer.includes(q) ||
-        branch.includes(q)
-      );
+      return productName.includes(q) || marketerName.includes(q) || customer.includes(q) || branch.includes(q);
     });
   })();
 
@@ -191,6 +210,7 @@ export default function PipelineTable(props: PipelineTableProps) {
         clear: () => {
           setFilterProductId('');
           setPage(1);
+          setOpenMenuId(null);
         },
       });
     }
@@ -203,6 +223,7 @@ export default function PipelineTable(props: PipelineTableProps) {
         clear: () => {
           setFilterMarketerId('');
           setPage(1);
+          setOpenMenuId(null);
         },
       });
     }
@@ -214,6 +235,7 @@ export default function PipelineTable(props: PipelineTableProps) {
         clear: () => {
           setFilterPlan('');
           setPage(1);
+          setOpenMenuId(null);
         },
       });
     }
@@ -225,15 +247,14 @@ export default function PipelineTable(props: PipelineTableProps) {
         clear: () => {
           setFilterQuadrant('');
           setPage(1);
+          setOpenMenuId(null);
         },
       });
     }
 
     if (filterPriority) {
       const nice =
-        filterPriority === 'priority' ? 'Prioritas' :
-        filterPriority === 'normal' ? 'Normal' :
-        filterPriority;
+        filterPriority === 'priority' ? 'Prioritas' : filterPriority === 'normal' ? 'Normal' : filterPriority;
 
       chips.push({
         key: 'priority',
@@ -241,6 +262,7 @@ export default function PipelineTable(props: PipelineTableProps) {
         clear: () => {
           setFilterPriority('');
           setPage(1);
+          setOpenMenuId(null);
         },
       });
     }
@@ -252,6 +274,7 @@ export default function PipelineTable(props: PipelineTableProps) {
         clear: () => {
           setFilterStatus('');
           setPage(1);
+          setOpenMenuId(null);
         },
       });
     }
@@ -263,6 +286,7 @@ export default function PipelineTable(props: PipelineTableProps) {
         clear: () => {
           setFilterLeadSource('');
           setPage(1);
+          setOpenMenuId(null);
         },
       });
     }
@@ -275,6 +299,7 @@ export default function PipelineTable(props: PipelineTableProps) {
         clear: () => {
           setSearch('');
           setPage(1);
+          setOpenMenuId(null);
         },
       });
     }
@@ -317,6 +342,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
+                  setOpenMenuId(null);
                 }}
                 placeholder="Cari nasabah, branch, marketer…"
                 className="w-64 rounded-lg border border-slate-200 bg-white pl-7 pr-3 py-1.5 text-[11px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-slate-400"
@@ -353,6 +379,7 @@ export default function PipelineTable(props: PipelineTableProps) {
             onChange={(e) => {
               setFilterProductId(e.target.value);
               setPage(1);
+              setOpenMenuId(null);
             }}
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 outline-none focus:border-slate-400"
           >
@@ -369,6 +396,7 @@ export default function PipelineTable(props: PipelineTableProps) {
             onChange={(e) => {
               setFilterMarketerId(e.target.value);
               setPage(1);
+              setOpenMenuId(null);
             }}
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 outline-none focus:border-slate-400"
           >
@@ -385,6 +413,7 @@ export default function PipelineTable(props: PipelineTableProps) {
             onChange={(e) => {
               setFilterPlan(e.target.value);
               setPage(1);
+              setOpenMenuId(null);
             }}
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 outline-none focus:border-slate-400"
           >
@@ -400,6 +429,7 @@ export default function PipelineTable(props: PipelineTableProps) {
             onChange={(e) => {
               setFilterQuadrant(e.target.value);
               setPage(1);
+              setOpenMenuId(null);
             }}
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 outline-none focus:border-slate-400"
           >
@@ -415,6 +445,7 @@ export default function PipelineTable(props: PipelineTableProps) {
             onChange={(e) => {
               setFilterPriority(e.target.value);
               setPage(1);
+              setOpenMenuId(null);
             }}
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 outline-none focus:border-slate-400"
           >
@@ -429,6 +460,7 @@ export default function PipelineTable(props: PipelineTableProps) {
               onChange={(e) => {
                 setFilterStatus(e.target.value);
                 setPage(1);
+                setOpenMenuId(null);
               }}
               className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 outline-none focus:border-slate-400"
             >
@@ -445,6 +477,7 @@ export default function PipelineTable(props: PipelineTableProps) {
               onChange={(e) => {
                 setFilterLeadSource(e.target.value);
                 setPage(1);
+                setOpenMenuId(null);
               }}
               className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 outline-none focus:border-slate-400"
             >
@@ -465,6 +498,7 @@ export default function PipelineTable(props: PipelineTableProps) {
               onResetFilters();
               setSearch('');
               setPage(1);
+              setOpenMenuId(null);
             }}
             className="text-[11px] text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
           >
@@ -581,7 +615,10 @@ export default function PipelineTable(props: PipelineTableProps) {
 
                       <button
                         type="button"
-                        onClick={onResetFilters}
+                        onClick={() => {
+                          onResetFilters();
+                          setOpenMenuId(null);
+                        }}
                         className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-slate-800"
                       >
                         Reset semua filter
@@ -654,17 +691,22 @@ export default function PipelineTable(props: PipelineTableProps) {
                     </td>
 
                     <td className="sticky right-0 z-10 bg-white/95 px-3 py-2 text-right align-top backdrop-blur">
-                      <div className="relative inline-flex">
+                      <div className="relative inline-flex" data-action-menu-root="pipeline">
                         <button
                           type="button"
                           onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
                           className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200/70 bg-white text-[14px] leading-none text-slate-500 shadow-sm hover:bg-slate-50"
+                          aria-haspopup="menu"
+                          aria-expanded={openMenuId === row.id}
                         >
                           ⋮
                         </button>
 
                         {openMenuId === row.id && (
-                          <div className="absolute right-0 top-8 z-30 w-40 rounded-xl border border-slate-200 bg-white py-1 text-left text-[11px] shadow-lg">
+                          <div
+                            className="absolute right-0 top-8 z-30 w-40 rounded-xl border border-slate-200 bg-white py-1 text-left text-[11px] shadow-lg"
+                            role="menu"
+                          >
                             <button
                               type="button"
                               onClick={() => {
@@ -672,6 +714,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                                 setOpenMenuId(null);
                               }}
                               className="flex w-full items-center px-3 py-1.5 text-left text-slate-700 hover:bg-slate-50"
+                              role="menuitem"
                             >
                               Lihat detail
                             </button>
@@ -682,6 +725,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                                 setOpenMenuId(null);
                               }}
                               className="flex w-full items-center px-3 py-1.5 text-left text-slate-700 hover:bg-slate-50"
+                              role="menuitem"
                             >
                               Edit
                             </button>
@@ -692,6 +736,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                                 setOpenMenuId(null);
                               }}
                               className="flex w-full items-center px-3 py-1.5 text-left text-slate-700 hover:bg-slate-50"
+                              role="menuitem"
                             >
                               Copy WA
                             </button>
@@ -702,6 +747,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                                 setOpenMenuId(null);
                               }}
                               className="flex w-full items-center px-3 py-1.5 text-left text-rose-600 hover:bg-rose-50"
+                              role="menuitem"
                             >
                               Hapus
                             </button>
