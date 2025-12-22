@@ -31,7 +31,6 @@ interface PipelineTableProps {
   filterLeadSource: string;
   setFilterLeadSource: (v: string) => void;
 
-  // Dipakai hanya untuk empty-state CTA "lihat 7 hari terakhir"
   datePreset: DatePreset;
   setDatePreset: (v: DatePreset) => void;
 
@@ -42,7 +41,6 @@ interface PipelineTableProps {
   onCopyWARow: (row: PipelineRow) => void;
   onResetFilters: () => void;
 
-  // highlight row realtime
   recentIds?: Record<string, number>;
 }
 
@@ -88,15 +86,9 @@ function getMenuPlacement(anchorRect: DOMRect, menuWidth = 160, menuHeight = 160
 
   const openUp = spaceBelow < menuHeight + margin && spaceAbove >= menuHeight + margin;
 
-  // prefer align right edge with anchor (right-0)
-  const wouldOverflowRight = anchorRect.right - menuWidth < margin; // if aligning right-0 makes it go too far left? not issue
-  const wouldOverflowLeft = anchorRect.left + menuWidth > viewportW - margin;
-
-  // We choose alignment to avoid overflow:
-  // - If it would overflow left when using left align, prefer right.
-  // - If it would overflow right when using right align, prefer left.
-  // Simplify: check "down-right" / "up-right" default, but if overflow on the right edge, switch to left.
-  const openLeft = wouldOverflowLeft;
+  // simple overflow check: if menu would overflow to right, align left instead
+  const wouldOverflowRight = anchorRect.left + menuWidth > viewportW - margin;
+  const openLeft = wouldOverflowRight;
 
   if (openUp && openLeft) return 'up-left';
   if (openUp && !openLeft) return 'up-right';
@@ -146,9 +138,13 @@ export default function PipelineTable(props: PipelineTableProps) {
   // Step 5: close menu on scroll container
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Step 6: adaptive placement
+  // Step 6: adaptive placement + keep refs to trigger buttons
   const actionBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [menuPlacement, setMenuPlacement] = useState<MenuPlacement>('down-right');
+
+  // Step 7: focus management
+  const lastOpenedTriggerIdRef = useRef<string | null>(null);
+  const menuContainerRef = useRef<HTMLDivElement | null>(null);
 
   const computePlacementForOpenMenu = () => {
     if (!openMenuId) return;
@@ -157,16 +153,38 @@ export default function PipelineTable(props: PipelineTableProps) {
     if (!btn) return;
 
     const rect = btn.getBoundingClientRect();
-    const placement = getMenuPlacement(rect, 160, 160);
-    setMenuPlacement(placement);
+    setMenuPlacement(getMenuPlacement(rect, 160, 160));
   };
 
-  // Step 4 + Step 5 + Step 6: Close menu on outside click + Esc + scroll + resize; also recompute placement
+  const focusFirstMenuItem = () => {
+    const menu = menuContainerRef.current;
+    if (!menu) return;
+    const items = Array.from(menu.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'));
+    if (items.length === 0) return;
+    items[0].focus();
+  };
+
+  const restoreFocusToLastTrigger = () => {
+    const id = lastOpenedTriggerIdRef.current;
+    if (!id) return;
+    const btn = actionBtnRefs.current[id];
+    if (btn) btn.focus();
+    lastOpenedTriggerIdRef.current = null;
+  };
+
+  // Step 4 + 5 + 6 + 7: close on outside click + esc + scroll; recompute placement on resize
   useEffect(() => {
-    if (!openMenuId) return;
+    if (!openMenuId) {
+      // when menu closes, restore focus (keyboard UX)
+      restoreFocusToLastTrigger();
+      return;
+    }
 
     // compute once on open
     computePlacementForOpenMenu();
+
+    // focus first item after menu renders
+    window.setTimeout(() => focusFirstMenuItem(), 0);
 
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement | null;
@@ -183,13 +201,10 @@ export default function PipelineTable(props: PipelineTableProps) {
     };
 
     const onScrollAny = () => {
-      // close to avoid floating menu mismatch during scroll
       setOpenMenuId(null);
     };
 
     const onResize = () => {
-      // keep open but recompute placement (lebih halus),
-      // tapi demi kestabilan UX, kita recompute saja (tidak close)
       computePlacementForOpenMenu();
     };
 
@@ -216,7 +231,6 @@ export default function PipelineTable(props: PipelineTableProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openMenuId]);
 
-  // maps biar tidak find() terus menerus
   const productMap = useMemo(() => {
     const map: Record<string, string> = {};
     products.forEach((p) => {
@@ -270,7 +284,6 @@ export default function PipelineTable(props: PipelineTableProps) {
     setOpenMenuId(null);
   };
 
-  // Active filter chips (tanpa ubah logic filter)
   const activeChips = useMemo(() => {
     const chips: Array<{ key: string; label: string; clear: () => void }> = [];
 
@@ -406,7 +419,6 @@ export default function PipelineTable(props: PipelineTableProps) {
     );
 
     if (!ok) return;
-
     onDeleteRow(row);
   };
 
@@ -418,6 +430,66 @@ export default function PipelineTable(props: PipelineTableProps) {
         : menuPlacement === 'down-left'
           ? 'left-0 top-8'
           : 'left-0 bottom-8';
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const menu = menuContainerRef.current;
+    if (!menu) return;
+
+    const items = Array.from(menu.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'));
+    if (items.length === 0) return;
+
+    const active = document.activeElement as HTMLButtonElement | null;
+    const idx = active ? items.indexOf(active) : -1;
+
+    const focusAt = (nextIndex: number) => {
+      const safe = Math.max(0, Math.min(items.length - 1, nextIndex));
+      items[safe]?.focus();
+    };
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      focusAt(idx >= 0 ? idx + 1 : 0);
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      focusAt(idx >= 0 ? idx - 1 : items.length - 1);
+      return;
+    }
+
+    if (e.key === 'Home') {
+      e.preventDefault();
+      focusAt(0);
+      return;
+    }
+
+    if (e.key === 'End') {
+      e.preventDefault();
+      focusAt(items.length - 1);
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      // focus trap
+      const first = items[0];
+      const last = items[items.length - 1];
+
+      if (!active) return;
+
+      if (e.shiftKey) {
+        if (active === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -781,8 +853,8 @@ export default function PipelineTable(props: PipelineTableProps) {
                             actionBtnRefs.current[String(row.id)] = el;
                           }}
                           onClick={() => {
+                            lastOpenedTriggerIdRef.current = String(row.id);
                             setOpenMenuId((prev) => (prev === row.id ? null : row.id));
-                            // compute placement on next tick (after state applied)
                             window.setTimeout(() => computePlacementForOpenMenu(), 0);
                           }}
                           className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200/70 bg-white text-[14px] leading-none text-slate-500 shadow-sm hover:bg-slate-50"
@@ -794,11 +866,15 @@ export default function PipelineTable(props: PipelineTableProps) {
 
                         {openMenuId === row.id && (
                           <div
+                            ref={menuContainerRef}
                             className={[
                               'absolute z-30 w-40 rounded-xl border border-slate-200 bg-white py-1 text-left text-[11px] shadow-lg',
                               menuPositionClass,
                             ].join(' ')}
                             role="menu"
+                            tabIndex={-1}
+                            onKeyDown={handleMenuKeyDown}
+                            aria-label="Menu aksi pipeline"
                           >
                             <button
                               type="button"
