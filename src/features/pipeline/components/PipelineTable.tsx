@@ -1,10 +1,15 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import * as XLSX from 'xlsx';
 
 import { PipelineRow, ProductMaster, MarketerMaster } from '@/types/pipeline';
 import type { DatePreset } from '../hooks/usePipelineFilters';
+
+import { exportPipelineExcelView } from './pipelineTable/exportExcelView';
+import { getMenuPlacement } from './pipelineTable/menuPlacement';
+import { Chip, PresetButton, SortTh } from './pipelineTable/tableParts';
+import { PAGE_SIZE, formatCurrencyIdr, formatCurrencyUsd } from './pipelineTable/tableUtils';
+import type { MenuPlacement, PresetId, SortDir, SortKey } from './pipelineTable/types';
 
 interface PipelineTableProps {
   filteredPipelines: PipelineRow[];
@@ -36,7 +41,7 @@ interface PipelineTableProps {
   datePreset: DatePreset;
   setDatePreset: (v: DatePreset) => void;
 
-  exportExcel: () => void; // legacy/raw export from parent (still supported)
+  exportExcel: () => void; // legacy/raw export from parent
   openDetailModal: (row: PipelineRow) => void;
   onEditRow: (row: PipelineRow) => void;
   onDeleteRow: (row: PipelineRow) => void;
@@ -44,144 +49,6 @@ interface PipelineTableProps {
   onResetFilters: () => void;
 
   recentIds?: Record<string, number>;
-}
-
-const PAGE_SIZE = 10;
-
-const formatCurrencyIdr = (value: number | null) => {
-  if (!value) return 'Rp 0';
-  return `Rp ${value.toLocaleString('id-ID')}`;
-};
-
-const formatCurrencyUsd = (value: number | null) => {
-  if (!value) return '$ 0';
-  return `$ ${value.toLocaleString('en-US')}`;
-};
-
-function Chip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 shadow-sm">
-      <span className="max-w-[240px] truncate">{label}</span>
-      <button
-        type="button"
-        onClick={onClear}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[12px] leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-        aria-label={`Hapus filter: ${label}`}
-        title="Hapus filter"
-      >
-        ×
-      </button>
-    </span>
-  );
-}
-
-type MenuPlacement = 'down-right' | 'up-right' | 'down-left' | 'up-left';
-
-function getMenuPlacement(anchorRect: DOMRect, menuWidth = 160, menuHeight = 160): MenuPlacement {
-  const margin = 12;
-
-  const viewportW = window.innerWidth;
-  const viewportH = window.innerHeight;
-
-  const spaceBelow = viewportH - anchorRect.bottom;
-  const spaceAbove = anchorRect.top;
-
-  const openUp = spaceBelow < menuHeight + margin && spaceAbove >= menuHeight + margin;
-
-  const wouldOverflowRight = anchorRect.left + menuWidth > viewportW - margin;
-  const openLeft = wouldOverflowRight;
-
-  if (openUp && openLeft) return 'up-left';
-  if (openUp && !openLeft) return 'up-right';
-  if (!openUp && openLeft) return 'down-left';
-  return 'down-right';
-}
-
-type SortKey = 'customer' | 'product' | 'ape_idr' | 'ape_usd' | 'marketer';
-type SortDir = 'asc' | 'desc';
-
-function SortTh({
-  label,
-  active,
-  dir,
-  onClick,
-  className,
-  align = 'left',
-}: {
-  label: string;
-  active: boolean;
-  dir: SortDir;
-  onClick: () => void;
-  className: string;
-  align?: 'left' | 'right';
-}) {
-  return (
-    <th scope="col" className={className}>
-      <button
-        type="button"
-        onClick={onClick}
-        className={[
-          'group inline-flex w-full items-center gap-1 text-[11px] font-semibold uppercase tracking-wide',
-          align === 'right' ? 'justify-end' : 'justify-start',
-        ].join(' ')}
-        title="Klik untuk urutkan"
-      >
-        <span>{label}</span>
-        <span
-          className={[
-            'text-[10px] leading-none',
-            active ? 'text-slate-700' : 'text-slate-300 group-hover:text-slate-500',
-          ].join(' ')}
-          aria-hidden="true"
-        >
-          {active ? (dir === 'asc' ? '▲' : '▼') : '↕'}
-        </span>
-      </button>
-    </th>
-  );
-}
-
-type PresetId = 'today_all' | '7d_all' | 'today_priority' | '7d_closing' | '7d_won';
-
-function PresetButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        'rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-sm transition-colors',
-        active
-          ? 'border-slate-300 bg-white text-slate-800'
-          : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-800',
-      ].join(' ')}
-    >
-      {label}
-    </button>
-  );
-}
-
-function formatPresetLabel(preset: DatePreset): string {
-  if (preset === 'today') return 'Hari ini';
-  if (preset === '7d') return '7 hari terakhir';
-  if (preset === '30d') return '30 hari terakhir';
-  if (preset === 'custom') return 'Custom range';
-  return String(preset);
-}
-
-function nowLocalTimestamp(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(
-    d.getMinutes()
-  )}`;
 }
 
 export default function PipelineTable(props: PipelineTableProps) {
@@ -209,7 +76,7 @@ export default function PipelineTable(props: PipelineTableProps) {
     datePreset,
     setDatePreset,
 
-    exportExcel, // raw export
+    exportExcel,
     openDetailModal,
     onEditRow,
     onDeleteRow,
@@ -223,9 +90,35 @@ export default function PipelineTable(props: PipelineTableProps) {
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null);
 
-  // Step 8: sort state
   const [sortKey, setSortKey] = useState<SortKey>('customer');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const actionBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [menuPlacement, setMenuPlacement] = useState<MenuPlacement>('down-right');
+
+  const lastOpenedTriggerIdRef = useRef<string | null>(null);
+  const menuContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const productMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    products.forEach((p) => {
+      if (p?.id) map[p.id] = p.name ?? '';
+    });
+    return map;
+  }, [products]);
+
+  const marketerMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    marketers.forEach((m) => {
+      if (m?.id) map[m.id] = m.name ?? '';
+    });
+    return map;
+  }, [marketers]);
+
+  const getProductName = (id: string) => productMap[id] ?? '-';
+  const getMarketerName = (id: string | null) => (id ? marketerMap[id] ?? '-' : '-');
 
   const setSort = (key: SortKey) => {
     setPage(1);
@@ -240,17 +133,6 @@ export default function PipelineTable(props: PipelineTableProps) {
       return key;
     });
   };
-
-  // Step 5: close menu on scroll container
-  const tableScrollRef = useRef<HTMLDivElement | null>(null);
-
-  // Step 6: adaptive placement + keep refs to trigger buttons
-  const actionBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [menuPlacement, setMenuPlacement] = useState<MenuPlacement>('down-right');
-
-  // Step 7: focus management
-  const lastOpenedTriggerIdRef = useRef<string | null>(null);
-  const menuContainerRef = useRef<HTMLDivElement | null>(null);
 
   const computePlacementForOpenMenu = () => {
     if (!openMenuId) return;
@@ -301,13 +183,8 @@ export default function PipelineTable(props: PipelineTableProps) {
       if (e.key === 'Escape') setOpenMenuId(null);
     };
 
-    const onScrollAny = () => {
-      setOpenMenuId(null);
-    };
-
-    const onResize = () => {
-      computePlacementForOpenMenu();
-    };
+    const onScrollAny = () => setOpenMenuId(null);
+    const onResize = () => computePlacementForOpenMenu();
 
     document.addEventListener('mousedown', onPointerDown, true);
     document.addEventListener('touchstart', onPointerDown, true);
@@ -332,100 +209,8 @@ export default function PipelineTable(props: PipelineTableProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openMenuId]);
 
-  const productMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    products.forEach((p) => {
-      if (p?.id) map[p.id] = p.name ?? '';
-    });
-    return map;
-  }, [products]);
-
-  const marketerMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    marketers.forEach((m) => {
-      if (m?.id) map[m.id] = m.name ?? '';
-    });
-    return map;
-  }, [marketers]);
-
-  const getProductName = (id: string) => productMap[id] ?? '-';
-
-  const getMarketerName = (id: string | null) => {
-    if (!id) return '-';
-    return marketerMap[id] ?? '-';
-  };
-
-  // Step 9: preset helpers (1 click)
-  const applyPreset = (preset: PresetId) => {
-    setSearch('');
-    setPage(1);
-    setOpenMenuId(null);
-
-    setFilterProductId('');
-    setFilterMarketerId('');
-    setFilterPlan('');
-    setFilterQuadrant('');
-    setFilterStatus('');
-    setFilterLeadSource('');
-    setFilterPriority('');
-
-    if (preset === 'today_all') {
-      setDatePreset('today');
-      return;
-    }
-
-    if (preset === '7d_all') {
-      setDatePreset('7d');
-      return;
-    }
-
-    if (preset === 'today_priority') {
-      setDatePreset('today');
-      setFilterPriority('priority');
-      return;
-    }
-
-    if (preset === '7d_closing') {
-      setDatePreset('7d');
-      setFilterStatus('closing');
-      return;
-    }
-
-    setDatePreset('7d');
-    setFilterStatus('won');
-  };
-
-  const activePreset: PresetId | null = useMemo(() => {
-    const noOtherFilters =
-      !filterProductId &&
-      !filterMarketerId &&
-      !filterPlan &&
-      !filterQuadrant &&
-      !filterLeadSource;
-
-    if (datePreset === 'today' && noOtherFilters && !filterStatus && !filterPriority) return 'today_all';
-    if (datePreset === '7d' && noOtherFilters && !filterStatus && !filterPriority) return '7d_all';
-
-    if (datePreset === 'today' && noOtherFilters && !filterStatus && filterPriority === 'priority')
-      return 'today_priority';
-    if (datePreset === '7d' && noOtherFilters && filterStatus === 'closing' && !filterPriority) return '7d_closing';
-    if (datePreset === '7d' && noOtherFilters && filterStatus === 'won' && !filterPriority) return '7d_won';
-
-    return null;
-  }, [
-    datePreset,
-    filterProductId,
-    filterMarketerId,
-    filterPlan,
-    filterQuadrant,
-    filterLeadSource,
-    filterStatus,
-    filterPriority,
-  ]);
-
   const rowsAfterSearch = useMemo(() => {
     if (!search.trim()) return filteredPipelines;
-
     const q = search.toLowerCase();
 
     return filteredPipelines.filter((row) => {
@@ -454,11 +239,8 @@ export default function PipelineTable(props: PipelineTableProps) {
       const vb = getValue(b.r);
 
       let cmp = 0;
-      if (typeof va === 'number' && typeof vb === 'number') {
-        cmp = va - vb;
-      } else {
-        cmp = String(va).localeCompare(String(vb), 'id');
-      }
+      if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
+      else cmp = String(va).localeCompare(String(vb), 'id');
 
       if (cmp === 0) return a.idx - b.idx;
       return sortDir === 'asc' ? cmp : -cmp;
@@ -481,6 +263,65 @@ export default function PipelineTable(props: PipelineTableProps) {
     setPage(newPage);
     setOpenMenuId(null);
   };
+
+  const applyPreset = (preset: PresetId) => {
+    setSearch('');
+    setPage(1);
+    setOpenMenuId(null);
+
+    setFilterProductId('');
+    setFilterMarketerId('');
+    setFilterPlan('');
+    setFilterQuadrant('');
+    setFilterStatus('');
+    setFilterLeadSource('');
+    setFilterPriority('');
+
+    if (preset === 'today_all') {
+      setDatePreset('today');
+      return;
+    }
+    if (preset === '7d_all') {
+      setDatePreset('7d');
+      return;
+    }
+    if (preset === 'today_priority') {
+      setDatePreset('today');
+      setFilterPriority('priority');
+      return;
+    }
+    if (preset === '7d_closing') {
+      setDatePreset('7d');
+      setFilterStatus('closing');
+      return;
+    }
+    setDatePreset('7d');
+    setFilterStatus('won');
+  };
+
+  const activePreset: PresetId | null = useMemo(() => {
+    const noOtherFilters =
+      !filterProductId && !filterMarketerId && !filterPlan && !filterQuadrant && !filterLeadSource;
+
+    if (datePreset === 'today' && noOtherFilters && !filterStatus && !filterPriority) return 'today_all';
+    if (datePreset === '7d' && noOtherFilters && !filterStatus && !filterPriority) return '7d_all';
+
+    if (datePreset === 'today' && noOtherFilters && !filterStatus && filterPriority === 'priority')
+      return 'today_priority';
+    if (datePreset === '7d' && noOtherFilters && filterStatus === 'closing' && !filterPriority) return '7d_closing';
+    if (datePreset === '7d' && noOtherFilters && filterStatus === 'won' && !filterPriority) return '7d_won';
+
+    return null;
+  }, [
+    datePreset,
+    filterProductId,
+    filterMarketerId,
+    filterPlan,
+    filterQuadrant,
+    filterLeadSource,
+    filterStatus,
+    filterPriority,
+  ]);
 
   const activeChips = useMemo(() => {
     const chips: Array<{ key: string; label: string; clear: () => void }> = [];
@@ -633,99 +474,29 @@ export default function PipelineTable(props: PipelineTableProps) {
     onDeleteRow(row);
   };
 
-  // Step 10: Export “sesuai tampilan” (filter + search + sort), dengan header konteks
   const exportExcelView = () => {
-    if (sortedRows.length === 0) {
-      alert('Tidak ada data pipeline untuk diexport (periksa filter/search).');
-      return;
-    }
+    exportPipelineExcelView({
+      rows: sortedRows,
+      datePreset,
 
-    const productLabel = filterProductId ? productMap[filterProductId] || filterProductId : 'Semua produk';
-    const marketerLabel = filterMarketerId ? marketerMap[filterMarketerId] || filterMarketerId : 'Semua marketer';
+      filterProductId,
+      filterMarketerId,
+      filterPlan,
+      filterQuadrant,
+      filterStatus,
+      filterLeadSource,
+      filterPriority,
 
-    const contextLines: string[][] = [
-      ['LAPORAN PIPELINE (EXPORT TAMPILAN)'],
-      ['Diexport pada', nowLocalTimestamp()],
-      ['Periode', formatPresetLabel(datePreset)],
-      ['Produk', productLabel],
-      ['Marketer', marketerLabel],
-      ['Plan', filterPlan || 'Semua'],
-      ['Quadrant', filterQuadrant ? filterQuadrant.toUpperCase() : 'Semua'],
-      ['Status', filterStatus || 'Semua'],
-      ['Lead Source', filterLeadSource || 'Semua'],
-      ['Prioritas', filterPriority || 'Semua'],
-      ['Search', search.trim() || '-'],
-      ['Sort', `${sortKey.toUpperCase()} (${sortDir.toUpperCase()})`],
-      ['Total baris', String(sortedRows.length)],
-      [],
-    ];
+      search,
+      sortKey,
+      sortDir,
 
-    const header = [
-      'NO',
-      'NASABAH',
-      'PRODUK',
-      'BRANCH',
-      'CLASS',
-      'MARKETER',
-      'APE_IDR',
-      'APE_USD',
-      'PLAN',
-      'QUADRANT',
-      'PIPELINE_DATE',
-      'STATUS',
-      'LEAD_SOURCE',
-      'EXPECTED_CLOSING',
-      'LAST_CONTACT',
-      'NEXT_ACTION',
-      'RISK_TAG',
-      'PRIORITAS',
-      'REMARKS',
-    ];
+      productMap,
+      marketerMap,
 
-    const body: (string | number)[][] = sortedRows.map((row, index) => {
-      const product = getProductName(row.product_id);
-      const marketer = getMarketerName(row.marketer_id);
-
-      return [
-        index + 1,
-        row.customer_name,
-        product,
-        row.branch ?? '',
-        row.class ?? '',
-        marketer,
-        row.ape_idr ?? 0,
-        row.ape_usd ?? 0,
-        row.execution_plan ?? '',
-        row.quadrant ?? '',
-        row.pipeline_date ?? '',
-        row.status ?? '',
-        row.lead_source ?? '',
-        row.expected_closing_date ?? '',
-        row.last_contact_date ?? '',
-        row.next_action ?? '',
-        row.risk_tag ?? '',
-        row.priority_flag ? 'YES' : '',
-        row.remarks ?? '',
-      ];
+      getProductName,
+      getMarketerName,
     });
-
-    const aoa: (string | number)[][] = [...contextLines, header, ...body];
-
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-    // basic column widths (optional, safe)
-    const colWidths = [
-      5, 22, 20, 14, 10, 18, 12, 10, 10, 10, 14, 12, 12, 16, 14, 18, 12, 10, 24,
-    ].map((wch) => ({ wch }));
-    ws['!cols'] = colWidths;
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Pipeline (View)');
-
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const filename = `pipeline-view-${dateStr}.xlsx`;
-
-    XLSX.writeFile(wb, filename);
   };
 
   const menuPositionClass =
@@ -757,25 +528,21 @@ export default function PipelineTable(props: PipelineTableProps) {
       focusAt(idx >= 0 ? idx + 1 : 0);
       return;
     }
-
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       focusAt(idx >= 0 ? idx - 1 : items.length - 1);
       return;
     }
-
     if (e.key === 'Home') {
       e.preventDefault();
       focusAt(0);
       return;
     }
-
     if (e.key === 'End') {
       e.preventDefault();
       focusAt(items.length - 1);
       return;
     }
-
     if (e.key === 'Tab') {
       const first = items[0];
       const last = items[items.length - 1];
@@ -819,7 +586,6 @@ export default function PipelineTable(props: PipelineTableProps) {
               />
             </div>
 
-            {/* Step 10: Export view + keep legacy raw export */}
             <button
               type="button"
               onClick={exportExcelView}
@@ -840,7 +606,6 @@ export default function PipelineTable(props: PipelineTableProps) {
           </div>
         </div>
 
-        {/* Step 9: Preset views */}
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-white/70 px-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[11px] font-medium text-slate-600">Preset:</p>
@@ -850,7 +615,11 @@ export default function PipelineTable(props: PipelineTableProps) {
               active={activePreset === 'today_all'}
               onClick={() => applyPreset('today_all')}
             />
-            <PresetButton label="7 hari · Semua" active={activePreset === '7d_all'} onClick={() => applyPreset('7d_all')} />
+            <PresetButton
+              label="7 hari · Semua"
+              active={activePreset === '7d_all'}
+              onClick={() => applyPreset('7d_all')}
+            />
             <PresetButton
               label="Hari ini · Prioritas"
               active={activePreset === 'today_priority'}
@@ -861,7 +630,11 @@ export default function PipelineTable(props: PipelineTableProps) {
               active={activePreset === '7d_closing'}
               onClick={() => applyPreset('7d_closing')}
             />
-            <PresetButton label="7 hari · Won" active={activePreset === '7d_won'} onClick={() => applyPreset('7d_won')} />
+            <PresetButton
+              label="7 hari · Won"
+              active={activePreset === '7d_won'}
+              onClick={() => applyPreset('7d_won')}
+            />
           </div>
 
           <button
@@ -1042,6 +815,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                 className="sticky left-0 z-20 min-w-[230px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-600"
                 align="left"
               />
+
               <SortTh
                 label="Produk"
                 active={sortKey === 'product'}
@@ -1050,12 +824,14 @@ export default function PipelineTable(props: PipelineTableProps) {
                 className="min-w-[200px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-600"
                 align="left"
               />
+
               <th
                 scope="col"
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Branch
               </th>
+
               <SortTh
                 label="APE (IDR)"
                 active={sortKey === 'ape_idr'}
@@ -1064,6 +840,7 @@ export default function PipelineTable(props: PipelineTableProps) {
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-slate-600"
                 align="right"
               />
+
               <SortTh
                 label="APE (USD)"
                 active={sortKey === 'ape_usd'}
@@ -1072,12 +849,14 @@ export default function PipelineTable(props: PipelineTableProps) {
                 className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-slate-600"
                 align="right"
               />
+
               <th
                 scope="col"
                 className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Plan / Quadrant
               </th>
+
               <SortTh
                 label="Marketer"
                 active={sortKey === 'marketer'}
@@ -1086,18 +865,21 @@ export default function PipelineTable(props: PipelineTableProps) {
                 className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-600"
                 align="left"
               />
+
               <th
                 scope="col"
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Status / Source
               </th>
+
               <th
                 scope="col"
                 className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Prioritas
               </th>
+
               <th
                 scope="col"
                 className="sticky right-0 z-20 min-w-[70px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
