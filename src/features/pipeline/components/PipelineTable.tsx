@@ -75,6 +75,35 @@ function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   );
 }
 
+type MenuPlacement = 'down-right' | 'up-right' | 'down-left' | 'up-left';
+
+function getMenuPlacement(anchorRect: DOMRect, menuWidth = 160, menuHeight = 160): MenuPlacement {
+  const margin = 12;
+
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+
+  const spaceBelow = viewportH - anchorRect.bottom;
+  const spaceAbove = anchorRect.top;
+
+  const openUp = spaceBelow < menuHeight + margin && spaceAbove >= menuHeight + margin;
+
+  // prefer align right edge with anchor (right-0)
+  const wouldOverflowRight = anchorRect.right - menuWidth < margin; // if aligning right-0 makes it go too far left? not issue
+  const wouldOverflowLeft = anchorRect.left + menuWidth > viewportW - margin;
+
+  // We choose alignment to avoid overflow:
+  // - If it would overflow left when using left align, prefer right.
+  // - If it would overflow right when using right align, prefer left.
+  // Simplify: check "down-right" / "up-right" default, but if overflow on the right edge, switch to left.
+  const openLeft = wouldOverflowLeft;
+
+  if (openUp && openLeft) return 'up-left';
+  if (openUp && !openLeft) return 'up-right';
+  if (!openUp && openLeft) return 'down-left';
+  return 'down-right';
+}
+
 export default function PipelineTable(props: PipelineTableProps) {
   const {
     filteredPipelines,
@@ -117,9 +146,27 @@ export default function PipelineTable(props: PipelineTableProps) {
   // Step 5: close menu on scroll container
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Step 4 + Step 5: Close menu on outside click + Esc + scroll + resize
+  // Step 6: adaptive placement
+  const actionBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [menuPlacement, setMenuPlacement] = useState<MenuPlacement>('down-right');
+
+  const computePlacementForOpenMenu = () => {
+    if (!openMenuId) return;
+
+    const btn = actionBtnRefs.current[String(openMenuId)];
+    if (!btn) return;
+
+    const rect = btn.getBoundingClientRect();
+    const placement = getMenuPlacement(rect, 160, 160);
+    setMenuPlacement(placement);
+  };
+
+  // Step 4 + Step 5 + Step 6: Close menu on outside click + Esc + scroll + resize; also recompute placement
   useEffect(() => {
     if (!openMenuId) return;
+
+    // compute once on open
+    computePlacementForOpenMenu();
 
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement | null;
@@ -136,24 +183,23 @@ export default function PipelineTable(props: PipelineTableProps) {
     };
 
     const onScrollAny = () => {
+      // close to avoid floating menu mismatch during scroll
       setOpenMenuId(null);
     };
 
     const onResize = () => {
-      setOpenMenuId(null);
+      // keep open but recompute placement (lebih halus),
+      // tapi demi kestabilan UX, kita recompute saja (tidak close)
+      computePlacementForOpenMenu();
     };
 
     document.addEventListener('mousedown', onPointerDown, true);
     document.addEventListener('touchstart', onPointerDown, true);
     document.addEventListener('keydown', onKeyDown, true);
 
-    // close ketika window scroll (misal user scroll page)
     window.addEventListener('scroll', onScrollAny, true);
-
-    // close ketika resize
     window.addEventListener('resize', onResize);
 
-    // close ketika scroll container tabel (horizontal/vertical)
     const el = tableScrollRef.current;
     if (el) el.addEventListener('scroll', onScrollAny, { passive: true });
 
@@ -167,6 +213,7 @@ export default function PipelineTable(props: PipelineTableProps) {
 
       if (el) el.removeEventListener('scroll', onScrollAny);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openMenuId]);
 
   // maps biar tidak find() terus menerus
@@ -363,6 +410,15 @@ export default function PipelineTable(props: PipelineTableProps) {
     onDeleteRow(row);
   };
 
+  const menuPositionClass =
+    menuPlacement === 'down-right'
+      ? 'right-0 top-8'
+      : menuPlacement === 'up-right'
+        ? 'right-0 bottom-8'
+        : menuPlacement === 'down-left'
+          ? 'left-0 top-8'
+          : 'left-0 bottom-8';
+
   return (
     <div className="space-y-3">
       <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
@@ -397,7 +453,6 @@ export default function PipelineTable(props: PipelineTableProps) {
           </div>
         </div>
 
-        {/* Active filter chips */}
         <div className="flex flex-wrap items-center gap-2">
           {activeChips.length === 0 ? (
             <p className="text-[11px] text-slate-500">Tidak ada filter aktif.</p>
@@ -559,63 +614,54 @@ export default function PipelineTable(props: PipelineTableProps) {
               >
                 Nasabah
               </th>
-
               <th
                 scope="col"
                 className="min-w-[200px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Produk
               </th>
-
               <th
                 scope="col"
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Branch
               </th>
-
               <th
                 scope="col"
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 APE (IDR)
               </th>
-
               <th
                 scope="col"
                 className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 APE (USD)
               </th>
-
               <th
                 scope="col"
                 className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Plan / Quadrant
               </th>
-
               <th
                 scope="col"
                 className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Marketer
               </th>
-
               <th
                 scope="col"
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Status / Source
               </th>
-
               <th
                 scope="col"
                 className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Prioritas
               </th>
-
               <th
                 scope="col"
                 className="sticky right-0 z-20 min-w-[70px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
@@ -670,7 +716,6 @@ export default function PipelineTable(props: PipelineTableProps) {
                 const productName = getProductName(row.product_id);
                 const marketerName = getMarketerName(row.marketer_id);
                 const isPrioritas = !!row.priority_flag;
-
                 const isRecent = !!recentIds?.[row.id];
 
                 return (
@@ -732,7 +777,14 @@ export default function PipelineTable(props: PipelineTableProps) {
                       <div className="relative inline-flex" data-action-menu-root="pipeline">
                         <button
                           type="button"
-                          onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
+                          ref={(el) => {
+                            actionBtnRefs.current[String(row.id)] = el;
+                          }}
+                          onClick={() => {
+                            setOpenMenuId((prev) => (prev === row.id ? null : row.id));
+                            // compute placement on next tick (after state applied)
+                            window.setTimeout(() => computePlacementForOpenMenu(), 0);
+                          }}
                           className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200/70 bg-white text-[14px] leading-none text-slate-500 shadow-sm hover:bg-slate-50"
                           aria-haspopup="menu"
                           aria-expanded={openMenuId === row.id}
@@ -742,7 +794,10 @@ export default function PipelineTable(props: PipelineTableProps) {
 
                         {openMenuId === row.id && (
                           <div
-                            className="absolute right-0 top-8 z-30 w-40 rounded-xl border border-slate-200 bg-white py-1 text-left text-[11px] shadow-lg"
+                            className={[
+                              'absolute z-30 w-40 rounded-xl border border-slate-200 bg-white py-1 text-left text-[11px] shadow-lg',
+                              menuPositionClass,
+                            ].join(' ')}
                             role="menu"
                           >
                             <button
