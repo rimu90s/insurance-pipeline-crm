@@ -44,6 +44,23 @@ function getRealtimeBadge(status: string) {
   return { label: 'Realtime: OFF', className: 'border-slate-200 bg-slate-50 text-slate-600' };
 }
 
+function getDatePresetLabel(
+  preset: string,
+  start?: string,
+  end?: string
+): string {
+  const p = (preset || '').toLowerCase();
+
+  // Hindari asumsi nama preset terlalu spesifik (karena implementasi bisa beda).
+  // Kita tampilkan preset apa adanya, dan kalau custom, tampilkan tanggalnya.
+  if (p.includes('custom')) {
+    const range = [start || '', end || ''].filter(Boolean).join(' → ');
+    return range ? `Custom (${range})` : 'Custom';
+  }
+
+  return preset || '-';
+}
+
 export default function PipelinePage() {
   // 1) AUTH
   const { loadingUser, userEmail, userId, logout } = useAuthUser();
@@ -81,7 +98,7 @@ export default function PipelinePage() {
     }, 1200);
   }, []);
 
-  // 6) Realtime patch (tanpa refetch) -> sekarang DIPAKAI (tidak unused lagi)
+  // 6) Realtime patch (tanpa refetch)
   const realtimeStatus = usePipelinesRealtimePatch({ userId, setPipelines, onTouchedId: markRecent });
   const realtimeBadge = getRealtimeBadge(realtimeStatus);
 
@@ -212,6 +229,22 @@ export default function PipelinePage() {
   const getProductName = (pid: string) => productMap[pid] ?? '-';
   const getMarketerName = (mid: string | null) => (mid ? marketerMap[mid] ?? '-' : '-');
 
+  const activePresetLabel = useMemo(() => {
+    return getDatePresetLabel(datePreset, customStartDate, customEndDate);
+  }, [datePreset, customStartDate, customEndDate]);
+
+  const activeProductLabel = useMemo(() => {
+    if (!filterProductId) return 'Semua produk';
+    const name = productMap[filterProductId];
+    return name ? name : filterProductId; // fallback ke id kalau name belum ada
+  }, [filterProductId, productMap]);
+
+  const activeMarketerLabel = useMemo(() => {
+    if (!filterMarketerId) return 'Semua marketer';
+    const name = marketerMap[filterMarketerId];
+    return name ? name : filterMarketerId;
+  }, [filterMarketerId, marketerMap]);
+
   // export excel
   const exportExcel = () => {
     if (filteredPipelines.length === 0) {
@@ -298,6 +331,18 @@ export default function PipelinePage() {
       <main className="mx-auto max-w-6xl px-4 py-5">
         <div className="space-y-5">
           <section className="rounded-2xl border border-white/60 bg-white/80 p-3 shadow-[0_20px_45px_rgba(15,23,42,0.08)] backdrop-blur">
+            {/* Context bar (UX): menjelaskan scope data yang tampil */}
+            <p className="px-1 pb-2 text-[11px] text-slate-500">
+              Menampilkan data:{' '}
+              <span className="font-medium text-slate-700">{activePresetLabel}</span>
+              {' · '}
+              Produk:{' '}
+              <span className="font-medium text-slate-700">{activeProductLabel}</span>
+              {' · '}
+              Marketer:{' '}
+              <span className="font-medium text-slate-700">{activeMarketerLabel}</span>
+            </p>
+
             <PipelineSummary
               totalCount={filteredPipelines.length}
               totalApeIdr={totalApeIdr}
