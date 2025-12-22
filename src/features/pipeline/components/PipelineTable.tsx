@@ -86,7 +86,6 @@ function getMenuPlacement(anchorRect: DOMRect, menuWidth = 160, menuHeight = 160
 
   const openUp = spaceBelow < menuHeight + margin && spaceAbove >= menuHeight + margin;
 
-  // simple overflow check: if menu would overflow to right, align left instead
   const wouldOverflowRight = anchorRect.left + menuWidth > viewportW - margin;
   const openLeft = wouldOverflowRight;
 
@@ -94,6 +93,50 @@ function getMenuPlacement(anchorRect: DOMRect, menuWidth = 160, menuHeight = 160
   if (openUp && !openLeft) return 'up-right';
   if (!openUp && openLeft) return 'down-left';
   return 'down-right';
+}
+
+type SortKey = 'customer' | 'product' | 'ape_idr' | 'ape_usd' | 'marketer';
+type SortDir = 'asc' | 'desc';
+
+function SortTh({
+  label,
+  active,
+  dir,
+  onClick,
+  className,
+  align = 'left',
+}: {
+  label: string;
+  active: boolean;
+  dir: SortDir;
+  onClick: () => void;
+  className: string;
+  align?: 'left' | 'right';
+}) {
+  return (
+    <th scope="col" className={className}>
+      <button
+        type="button"
+        onClick={onClick}
+        className={[
+          'group inline-flex w-full items-center gap-1 text-[11px] font-semibold uppercase tracking-wide',
+          align === 'right' ? 'justify-end' : 'justify-start',
+        ].join(' ')}
+        title="Klik untuk urutkan"
+      >
+        <span>{label}</span>
+        <span
+          className={[
+            'text-[10px] leading-none',
+            active ? 'text-slate-700' : 'text-slate-300 group-hover:text-slate-500',
+          ].join(' ')}
+          aria-hidden="true"
+        >
+          {active ? (dir === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
+  );
 }
 
 export default function PipelineTable(props: PipelineTableProps) {
@@ -135,6 +178,24 @@ export default function PipelineTable(props: PipelineTableProps) {
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null);
 
+  // Step 8: sort state
+  const [sortKey, setSortKey] = useState<SortKey>('customer');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const setSort = (key: SortKey) => {
+    setPage(1);
+    setOpenMenuId(null);
+
+    setSortKey((prevKey) => {
+      if (prevKey === key) {
+        setSortDir((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
+        return prevKey;
+      }
+      setSortDir('asc');
+      return key;
+    });
+  };
+
   // Step 5: close menu on scroll container
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -172,18 +233,13 @@ export default function PipelineTable(props: PipelineTableProps) {
     lastOpenedTriggerIdRef.current = null;
   };
 
-  // Step 4 + 5 + 6 + 7: close on outside click + esc + scroll; recompute placement on resize
   useEffect(() => {
     if (!openMenuId) {
-      // when menu closes, restore focus (keyboard UX)
       restoreFocusToLastTrigger();
       return;
     }
 
-    // compute once on open
     computePlacementForOpenMenu();
-
-    // focus first item after menu renders
     window.setTimeout(() => focusFirstMenuItem(), 0);
 
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
@@ -254,7 +310,7 @@ export default function PipelineTable(props: PipelineTableProps) {
     return marketerMap[id] ?? '-';
   };
 
-  const rowsAfterSearch = (() => {
+  const rowsAfterSearch = useMemo(() => {
     if (!search.trim()) return filteredPipelines;
 
     const q = search.toLowerCase();
@@ -267,16 +323,46 @@ export default function PipelineTable(props: PipelineTableProps) {
 
       return productName.includes(q) || marketerName.includes(q) || customer.includes(q) || branch.includes(q);
     });
-  })();
+  }, [filteredPipelines, search, productMap, marketerMap]); // productMap/marketerMap change -> getProductName changes
 
-  const totalRows = rowsAfterSearch.length;
+  // Step 8: sorting applied after search/filter
+  const sortedRows = useMemo(() => {
+    const withIndex = rowsAfterSearch.map((r, idx) => ({ r, idx }));
+
+    const getValue = (row: PipelineRow): string | number => {
+      if (sortKey === 'customer') return (row.customer_name ?? '').toLowerCase();
+      if (sortKey === 'product') return getProductName(row.product_id).toLowerCase();
+      if (sortKey === 'marketer') return getMarketerName(row.marketer_id).toLowerCase();
+      if (sortKey === 'ape_idr') return row.ape_idr ?? 0;
+      return row.ape_usd ?? 0;
+    };
+
+    withIndex.sort((a, b) => {
+      const va = getValue(a.r);
+      const vb = getValue(b.r);
+
+      let cmp = 0;
+      if (typeof va === 'number' && typeof vb === 'number') {
+        cmp = va - vb;
+      } else {
+        cmp = String(va).localeCompare(String(vb), 'id');
+      }
+
+      if (cmp === 0) return a.idx - b.idx; // stable sort
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    return withIndex.map((x) => x.r);
+  }, [rowsAfterSearch, sortKey, sortDir, productMap, marketerMap]);
+
+  const totalRows = sortedRows.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
 
   const pagedRows = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
-    return rowsAfterSearch.slice(start, start + PAGE_SIZE);
-  }, [rowsAfterSearch, currentPage]);
+    return sortedRows.slice(start, start + PAGE_SIZE);
+  }, [sortedRows, currentPage]);
 
   const handleChangePage = (newPage: number) => {
     if (newPage < 1 || newPage > totalPages) return;
@@ -389,6 +475,18 @@ export default function PipelineTable(props: PipelineTableProps) {
       });
     }
 
+    // expose sorting as chip (optional UX)
+    chips.push({
+      key: 'sort',
+      label: `Sort: ${sortKey.toUpperCase()} (${sortDir.toUpperCase()})`,
+      clear: () => {
+        setSortKey('customer');
+        setSortDir('asc');
+        setPage(1);
+        setOpenMenuId(null);
+      },
+    });
+
     return chips;
   }, [
     filterProductId,
@@ -401,6 +499,8 @@ export default function PipelineTable(props: PipelineTableProps) {
     search,
     productMap,
     marketerMap,
+    sortKey,
+    sortDir,
     setFilterProductId,
     setFilterMarketerId,
     setFilterPlan,
@@ -471,10 +571,8 @@ export default function PipelineTable(props: PipelineTableProps) {
     }
 
     if (e.key === 'Tab') {
-      // focus trap
       const first = items[0];
       const last = items[items.length - 1];
-
       if (!active) return;
 
       if (e.shiftKey) {
@@ -530,7 +628,7 @@ export default function PipelineTable(props: PipelineTableProps) {
             <p className="text-[11px] text-slate-500">Tidak ada filter aktif.</p>
           ) : (
             <>
-              <p className="text-[11px] text-slate-500">Filter aktif:</p>
+              <p className="text-[11px] text-slate-500">Aktif:</p>
               {activeChips.map((c) => (
                 <Chip key={c.key} label={c.label} onClear={c.clear} />
               ))}
@@ -680,60 +778,79 @@ export default function PipelineTable(props: PipelineTableProps) {
         <table className="min-w-full border-separate border-spacing-0 text-xs">
           <thead>
             <tr>
-              <th
-                scope="col"
-                className="sticky left-0 z-20 min-w-[230px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
-              >
-                Nasabah
-              </th>
-              <th
-                scope="col"
-                className="min-w-[200px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
-              >
-                Produk
-              </th>
+              <SortTh
+                label="Nasabah"
+                active={sortKey === 'customer'}
+                dir={sortDir}
+                onClick={() => setSort('customer')}
+                className="sticky left-0 z-20 min-w-[230px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-600"
+                align="left"
+              />
+
+              <SortTh
+                label="Produk"
+                active={sortKey === 'product'}
+                dir={sortDir}
+                onClick={() => setSort('product')}
+                className="min-w-[200px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-600"
+                align="left"
+              />
+
               <th
                 scope="col"
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Branch
               </th>
-              <th
-                scope="col"
-                className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
-              >
-                APE (IDR)
-              </th>
-              <th
-                scope="col"
-                className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
-              >
-                APE (USD)
-              </th>
+
+              <SortTh
+                label="APE (IDR)"
+                active={sortKey === 'ape_idr'}
+                dir={sortDir}
+                onClick={() => setSort('ape_idr')}
+                className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-slate-600"
+                align="right"
+              />
+
+              <SortTh
+                label="APE (USD)"
+                active={sortKey === 'ape_usd'}
+                dir={sortDir}
+                onClick={() => setSort('ape_usd')}
+                className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-slate-600"
+                align="right"
+              />
+
               <th
                 scope="col"
                 className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Plan / Quadrant
               </th>
-              <th
-                scope="col"
-                className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
-              >
-                Marketer
-              </th>
+
+              <SortTh
+                label="Marketer"
+                active={sortKey === 'marketer'}
+                dir={sortDir}
+                onClick={() => setSort('marketer')}
+                className="min-w-[130px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-600"
+                align="left"
+              />
+
               <th
                 scope="col"
                 className="min-w-[140px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Status / Source
               </th>
+
               <th
                 scope="col"
                 className="min-w-[110px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600"
               >
                 Prioritas
               </th>
+
               <th
                 scope="col"
                 className="sticky right-0 z-20 min-w-[70px] border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-600"
